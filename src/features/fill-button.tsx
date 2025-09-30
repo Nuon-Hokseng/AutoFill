@@ -1,7 +1,7 @@
 export const FillButton = () => {
   return (
     <section id="fill-button">
-      <p>Hello</p>
+      <p>Hello world</p>
     </section>
   )
 }
