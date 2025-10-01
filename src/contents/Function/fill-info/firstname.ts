@@ -2,11 +2,14 @@
 import {
   fillFieldWithAnimation,
   getAssociatedLabelText,
-  matchesAny
+  matchesAny,
+  triggerEvents
 } from "./utils"
 
 const FIRSTNAME_KEYWORDS = [
   "First name",
+  "first name",
+  "First Name",
   "firstName",
   "firstname",
   "first_name",

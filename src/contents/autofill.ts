@@ -14,7 +14,7 @@ import {
   fillUsername,
   getAssociatedLabel,
   type GenderRadios
-} from "./Function"
+} from "./Function/fill-info"
 
 console.log("Autofill content script loaded")
 
@@ -154,10 +154,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === "AUTOFILL_CREDENTIALS") {
     // Use test credentials for now
     const creds = {
-      gender: "-1", // 1 = female, 2 = male, -1 = custom
+      gender: "2", 
       firstname: "nuon",
       lastname: "hokseng",
-      username: "testuser123",
+      username: "sengZ",
       email: "test@example.com",
       password: "TestPassword123!"
     }

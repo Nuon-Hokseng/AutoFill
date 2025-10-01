@@ -38,52 +38,6 @@ export function detectUsernameField(
       break
     }
   }
-
-  // Fallback: find first suitable text input that's not email/password
-  if (!usernameEl) {
-    const candidate = inputs.find((el) => {
-      const type = (el.getAttribute("type") || "text").toLowerCase()
-
-      // Skip non-text inputs
-      if (
-        [
-          "hidden",
-          "email",
-          "password",
-          "submit",
-          "button",
-          "checkbox",
-          "radio"
-        ].includes(type)
-      ) {
-        return false
-      }
-
-      // Skip inputs that are clearly other things
-      const name = (el.getAttribute("name") || "").toLowerCase()
-      if (
-        matchesAny(name, [
-          "search",
-          "q",
-          "phone",
-          "tel",
-          "address",
-          "city",
-          "zip"
-        ])
-      ) {
-        return false
-      }
-
-      return true
-    })
-
-    if (candidate) {
-      usernameEl = candidate
-      console.log("Found username field by fallback heuristics")
-    }
-  }
-
   return usernameEl
 }
 

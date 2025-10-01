@@ -6,6 +6,8 @@ import {
 } from "./utils"
 
 const LASTNAME_KEYWORDS = [
+  "last Name",
+  "last name",
   "Last name",
   "lastName",
   "lastname",
