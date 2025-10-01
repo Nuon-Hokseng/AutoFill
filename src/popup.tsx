@@ -11,9 +11,7 @@ export default function IndexPopup() {
       <p className="plasmo-text-gray-600 plasmo-mb-4">
         Your extension is ready for development!
       </p>
-      <button className="plasmo-w-full plasmo-px-4 plasmo-py-2 plasmo-bg-blue-500 plasmo-text-white plasmo-rounded hover:plasmo-bg-blue-600 plasmo-transition">
-        <FillButton />
-      </button>
+      <FillButton />
     </div>
   )
 }
