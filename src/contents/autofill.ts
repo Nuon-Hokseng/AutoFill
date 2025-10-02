@@ -157,7 +157,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       gender: "2", 
       firstname: "nuon",
       lastname: "hokseng",
-      username: "sengZ",
+      username: "HokSeng BC Zin",
       email: "test@example.com",
       password: "TestPassword123!"
     }
