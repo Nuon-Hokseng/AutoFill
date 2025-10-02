@@ -111,7 +111,7 @@ export async function fillDOB(
 ): Promise<boolean> {
   if (!value || !dobSelect) return false
 
-  // Determine which field to fill based on what's available
+  // Determine which field to fill 
   let dobElement: HTMLSelectElement | null = null
   let fieldType = ""
 
