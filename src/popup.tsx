@@ -16,7 +16,7 @@ export default function IndexPopup() {
       <FillButton />
       <button
         onClick={() => chrome.runtime.openOptionsPage()}
-        className="plasmo-text-gray-600 plasmo-mb-4 plasmo-text-center plasmo-p-2">Setting</button>
+        className="plasmo-text-gray-600 plasmo-text-center plasmo-mt-1">Setting</button>
     </div>
   )
 }

@@ -1,11 +1,13 @@
 // contents/autofill.ts - Main autofill orchestrator
 import {
+  detectDOBFields,
   detectEmailField,
   detectFirstNameField,
   detectGenderFields,
   detectLastNameField,
   detectPasswordField,
   detectUsernameField,
+  fillDOB,
   fillEmail,
   fillFirstName,
   fillGender,
@@ -13,6 +15,7 @@ import {
   fillPassword,
   fillUsername,
   getAssociatedLabel,
+  type DOBselect,
   type GenderRadios
 } from "./Function/fill-info"
 
@@ -33,6 +36,7 @@ function detectCredentialFields() {
   const firstnameEl = detectFirstNameField(inputs)
   const lastnameEl = detectLastNameField(inputs)
   const genderRadios = detectGenderFields()
+  const dobSelect = detectDOBFields()
 
   return {
     emailEl,
@@ -40,7 +44,8 @@ function detectCredentialFields() {
     passwordEl,
     firstnameEL: firstnameEl,
     lastnameEL: lastnameEl,
-    genderRadios
+    genderRadios,
+    dobSelect
   }
 }
 
@@ -52,6 +57,9 @@ async function fillCredentials(credentials: {
   firstname?: string
   lastname?: string
   gender?: string
+  day?: string
+  month?: string
+  year?: string
 }) {
   try {
     const {
@@ -60,7 +68,8 @@ async function fillCredentials(credentials: {
       passwordEl,
       firstnameEL,
       lastnameEL,
-      genderRadios
+      genderRadios,
+      dobSelect
     } = detectCredentialFields()
     console.log("Detected fields:", {
       email: emailEl ? `${emailEl.tagName}[${emailEl.type || "text"}]` : null,
@@ -84,7 +93,10 @@ async function fillCredentials(credentials: {
         : null,
       genderCustom: genderRadios.custom
         ? `Found custom radio (value: ${genderRadios.custom.value})`
-        : null
+        : null,
+      dobDay: dobSelect.day ? "Found day select" : null,
+      dobMonth: dobSelect.month ? "Found month select" : null,
+      dobYear: dobSelect.year ? "Found year select" : null
     })
 
     let fieldsCount = 0
@@ -121,6 +133,34 @@ async function fillCredentials(credentials: {
       if (success) fieldsCount++
     }
 
+    // Handle date of birth selects
+    if (
+      dobSelect &&
+      (credentials.day || credentials.month || credentials.year)
+    ) {
+      if (credentials.day && dobSelect.day) {
+        const success = await fillDOB(
+          { day: dobSelect.day, month: null, year: null },
+          credentials.day
+        )
+        if (success) fieldsCount++
+      }
+      if (credentials.month && dobSelect.month) {
+        const success = await fillDOB(
+          { day: null, month: dobSelect.month, year: null },
+          credentials.month
+        )
+        if (success) fieldsCount++
+      }
+      if (credentials.year && dobSelect.year) {
+        const success = await fillDOB(
+          { day: null, month: null, year: dobSelect.year },
+          credentials.year
+        )
+        if (success) fieldsCount++
+      }
+    }
+
     // Final cleanup: Ensure all labels are properly positioned
     setTimeout(() => {
       const allInputs = document.querySelectorAll(
@@ -154,12 +194,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === "AUTOFILL_CREDENTIALS") {
     // Use test credentials for now
     const creds = {
-      gender: "2", 
+      gender: "2",
       firstname: "nuon",
       lastname: "hokseng",
-      username: "HokSeng BC Zin",
+      username: "seng cute",
       email: "test@example.com",
-      password: "TestPassword123!"
+      password: "TestPassword123!",
+      day: "24", 
+      month: "4", 
+      year: "2005" 
     }
 
     console.log("Filling credentials:", creds)
