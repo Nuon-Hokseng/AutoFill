@@ -8,7 +8,9 @@ export function matchesAny(str: string | null, keywords: string[]): boolean {
 }
 
 // get content from element input field
-export function getAssociatedLabelText(input: HTMLInputElement): string {
+export function getAssociatedLabelText(
+  input: HTMLInputElement | HTMLSelectElement
+): string {
   // Try label with 'for' attribute first
   if (input.id) {
     const label = document.querySelector(`label[for="${input.id}"]`)
@@ -24,7 +26,7 @@ export function getAssociatedLabelText(input: HTMLInputElement): string {
 
 //label from input elements
 export function getAssociatedLabel(
-  input: HTMLInputElement
+  input: HTMLInputElement | HTMLSelectElement
 ): HTMLLabelElement | null {
   // Try label with 'for' attribute first
   if (input.id) {
@@ -129,6 +131,7 @@ export async function fillFieldWithAnimation(
             "dirty",
             "ng-not-empty"
           ]
+          label.classList.add(...labelClasses)
         }
 
         // Add classes to the input element itself
@@ -138,7 +141,6 @@ export async function fillFieldWithAnimation(
           "not-empty",
           "dirty",
           "ng-not-empty"
-          
         ]
         element.classList.add(...inputClasses)
         element.setAttribute("data-filled", "true")
