@@ -9,7 +9,7 @@ export interface GenderRadios {
   custom: HTMLInputElement | null
 }
 
-// Helper: trigger events specifically for radio buttons
+// trigger event detection to radio input form
 function triggerRadioEvents(el: HTMLInputElement): void {
   el.focus?.()
   el.dispatchEvent(new Event("click", { bubbles: true }))
@@ -53,17 +53,17 @@ export function detectGenderFields(): GenderRadios {
       // Fallback: text-based detection only if no numeric values found
       else if (
         !genderRadios.male &&
-        (matchesAny(value, ["male", "m", "man"]) ||
-          matchesAny(id, ["male", "m", "man"]) ||
-          matchesAny(labelText, ["male", "m", "man"]))
+        (matchesAny(value, ["male", "m", "man", "Male"]) ||
+          matchesAny(id, ["male", "m", "man", "Male"]) ||
+          matchesAny(labelText, ["male", "m", "man", "Male"]))
       ) {
         genderRadios.male = radio
         console.log("Found male gender radio with text-based detection")
       } else if (
         !genderRadios.female &&
-        (matchesAny(value, ["female", "f", "woman"]) ||
-          matchesAny(id, ["female", "f", "woman"]) ||
-          matchesAny(labelText, ["female", "f", "woman"]))
+        (matchesAny(value, ["female", "f", "woman", "Female"]) ||
+          matchesAny(id, ["female", "f", "woman", "Female"]) ||
+          matchesAny(labelText, ["female", "f", "woman", "Female"]))
       ) {
         genderRadios.female = radio
         console.log("Found female gender radio with text-based detection")
