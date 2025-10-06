@@ -74,9 +74,10 @@ function CustomTab({ goBack }) {
       payload.year = year
     }
 
-    setForm(payload)
-    setStatus("✅ Saved!")
-    setTimeout(() => setStatus(""), 2000)
+    chrome.storage.local.set({ autofillData: payload }, () => {
+      setStatus("✅ Saved!")
+      setTimeout(() => setStatus(""), 2000)
+    })
   }
 
   const handleRemove = () => {

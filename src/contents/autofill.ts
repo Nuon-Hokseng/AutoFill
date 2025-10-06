@@ -168,22 +168,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   console.log("Content script received message:", msg)
 
   if (msg?.type === "AUTOFILL_CREDENTIALS") {
-    // Use test credentials for now
-    const creds = {
-      gender: "2",
-      firstname: "nuon",
-      lastname: "hokseng",
-      username: "seng cute",
-      email: "test@example.com",
-      password: "TestPassword123!",
-      dob: "10-5-2010"
+  chrome.storage.local.get("autofillData", (res) => {
+    if (res.autofillData) {
+      console.log("Loaded credentials from storage:", res.autofillData)
+      fillCredentials(res.autofillData)
+      sendResponse({ success: true })
+    } else {
+      console.warn("No saved autofill data found!")
+      sendResponse({ success: false, error: "No saved data" })
     }
-
-    console.log("Filling credentials:", creds)
-    fillCredentials(creds)
-    sendResponse({ success: true })
-    return true
-  }
+  })
+  return true // important for async response
+}
 
   sendResponse({ success: false, error: "Unknown message type" })
 })
