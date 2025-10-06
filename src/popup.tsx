@@ -69,9 +69,7 @@ function CustomTab({ goBack }) {
 
     if (dob) {
       const [year, month, day] = dob.split("-")
-      payload.day = day
-      payload.month = month
-      payload.year = year
+      payload.dob = `${day}-${month}-${year}`
     }
 
     chrome.storage.local.set({ autofillData: payload }, () => {
