@@ -57,9 +57,7 @@ async function fillCredentials(credentials: {
   firstname?: string
   lastname?: string
   gender?: string
-  day?: string
-  month?: string
-  year?: string
+  dob?: string
 }) {
   try {
     const {
@@ -134,31 +132,9 @@ async function fillCredentials(credentials: {
     }
 
     // Handle date of birth selects
-    if (
-      dobSelect &&
-      (credentials.day || credentials.month || credentials.year)
-    ) {
-      if (credentials.day && dobSelect.day) {
-        const success = await fillDOB(
-          { day: dobSelect.day, month: null, year: null },
-          credentials.day
-        )
-        if (success) fieldsCount++
-      }
-      if (credentials.month && dobSelect.month) {
-        const success = await fillDOB(
-          { day: null, month: dobSelect.month, year: null },
-          credentials.month
-        )
-        if (success) fieldsCount++
-      }
-      if (credentials.year && dobSelect.year) {
-        const success = await fillDOB(
-          { day: null, month: null, year: dobSelect.year },
-          credentials.year
-        )
-        if (success) fieldsCount++
-      }
+    if (dobSelect && credentials.dob) {
+      const success = await fillDOB(dobSelect, credentials.dob)
+      if (success) fieldsCount++
     }
 
     // Final cleanup: Ensure all labels are properly positioned
@@ -200,9 +176,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       username: "seng cute",
       email: "test@example.com",
       password: "TestPassword123!",
-      day: "24", 
-      month: "4", 
-      year: "2005" 
+      dob: "10-5-2010"
     }
 
     console.log("Filling credentials:", creds)
