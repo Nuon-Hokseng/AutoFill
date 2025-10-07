@@ -15,7 +15,7 @@ export { detectPasswordField, fillPassword } from "./password"
 export { detectFirstNameField, fillFirstName } from "./firstname"
 export { detectLastNameField, fillLastName } from "./lastname"
 export { detectGenderFields, fillGender } from "./gender"
-export { detectDOBFields, fillDOB} from "./dob"
+export { detectDOBFields, fillDOB } from "./dob"
 export {
   matchesAny,
   getAssociatedLabelText,
