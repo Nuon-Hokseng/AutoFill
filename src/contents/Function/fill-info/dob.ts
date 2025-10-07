@@ -126,8 +126,9 @@ export async function fillDOB(
 
   if (dobSelect.month && month) {
     try {
+      const monthValue = String(parseInt(month))
       console.log(`Filling DOB month field with value: ${month}`)
-      triggerSelectEvents(dobSelect.month, month)
+      triggerSelectEvents(dobSelect.month, monthValue)
       filledSomething = true
     } catch (error) {
       console.error("Error filling DOB month field:", error)

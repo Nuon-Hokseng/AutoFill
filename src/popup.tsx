@@ -128,7 +128,26 @@ function CustomTab({ goBack }) {
               </label>
             )
           }
-
+          if (type === "date") {
+            return (
+              <label
+                key={key}
+                htmlFor={key}
+                className="plasmo-w-full plasmo-max-w-xs">
+                <span className="plasmo-block plasmo-text-sm plasmo-text-gray-500 plasmo-mb-1">
+                  {label}
+                </span>
+                <input
+                  id={key}
+                  type="date"
+                  max="2010-01-01" 
+                  value={form?.[key] || ""}
+                  onChange={handleInputChange}
+                  className="plasmo-w-full plasmo-border plasmo-border-gray-600 plasmo-rounded-md plasmo-px-2 plasmo-py-1 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-blue-500"
+                />
+              </label>
+            )
+          }
           return (
             <label
               key={key}
