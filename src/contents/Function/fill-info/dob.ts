@@ -107,36 +107,47 @@ export function detectDOBFields(): DOBselect {
 
 export async function fillDOB(
   dobSelect: DOBselect,
-  value: string
+  dob: string
 ): Promise<boolean> {
-  if (!value || !dobSelect) return false
+  if (!dob || !dobSelect) return false
 
-  // Determine which field to fill 
-  let dobElement: HTMLSelectElement | null = null
-  let fieldType = ""
+  const [day, month, year] = dob.split("-")
 
-  if (dobSelect.day) {
-    dobElement = dobSelect.day
-    fieldType = "day"
-  } else if (dobSelect.month) {
-    dobElement = dobSelect.month
-    fieldType = "month"
-  } else if (dobSelect.year) {
-    dobElement = dobSelect.year
-    fieldType = "year"
-  }
-
-  if (dobElement) {
+  let filledSomething = false
+  if (dobSelect.day && day) {
     try {
-      console.log(`Filling DOB ${fieldType} field with value: ${value}`)
-      triggerSelectEvents(dobElement, value)
-      return true
+      console.log(`Filling DOB day field with value: ${day}`)
+      triggerSelectEvents(dobSelect.day, day)
+      filledSomething = true
     } catch (error) {
-      console.error("Error filling DOB field:", error)
-      return false
+      console.error("Error filling DOB day field:", error)
     }
-  } else {
-    console.warn("No DOB select elements found")
-    return false
   }
+
+  if (dobSelect.month && month) {
+    try {
+      const monthValue = String(parseInt(month))
+      console.log(`Filling DOB month field with value: ${month}`)
+      triggerSelectEvents(dobSelect.month, monthValue)
+      filledSomething = true
+    } catch (error) {
+      console.error("Error filling DOB month field:", error)
+    }
+  }
+
+  if (dobSelect.year && year) {
+    try {
+      console.log(`Filling DOB year field with value: ${year}`)
+      triggerSelectEvents(dobSelect.year, year)
+      filledSomething = true
+    } catch (error) {
+      console.error("Error filling DOB year field:", error)
+    }
+  }
+
+  if (!filledSomething) {
+    console.warn("No DOB select elements found or dob string is invalid")
+  }
+
+  return filledSomething
 }
