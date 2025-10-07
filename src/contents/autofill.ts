@@ -1,8 +1,6 @@
 // contents/autofill.ts - Main autofill orchestrator
 import {
   detectDOBFields,
-  detectEmailField,
-  detectFirstNameField,
   detectGenderFields,
   detectLastNameField,
   detectPasswordField,
@@ -18,6 +16,7 @@ import {
   type DOBselect,
   type GenderRadios
 } from "./Function/fill-info"
+import { detectFields } from "./Function/fill-info/fieldDetector"
 
 console.log("Autofill content script loaded")
 
@@ -30,11 +29,13 @@ function detectCredentialFields() {
   ) as HTMLInputElement[]
 
   // Detect each field type using specialized functions
-  const emailEl = detectEmailField(inputs)
-  const usernameEl = detectUsernameField(inputs)
-  const passwordEl = detectPasswordField(inputs)
-  const firstnameEl = detectFirstNameField(inputs)
-  const lastnameEl = detectLastNameField(inputs)
+  // Use the combined scoring detector for core text fields
+  const scored = detectFields(inputs)
+  const emailEl = scored.email as HTMLInputElement | null
+  const usernameEl = scored.username as HTMLInputElement | null
+  const passwordEl = scored.password as HTMLInputElement | null
+  const firstnameEl = scored.firstname as HTMLInputElement | null
+  const lastnameEl = scored.lastname as HTMLInputElement | null
   const genderRadios = detectGenderFields()
   const dobSelect = detectDOBFields()
 
@@ -47,6 +48,42 @@ function detectCredentialFields() {
     genderRadios,
     dobSelect
   }
+}
+
+// Re-run detection when new inputs are added dynamically (throttled)
+let lastDetect = 0
+function ensureFreshDetection() {
+  const now = Date.now()
+  if (now - lastDetect < 500) return
+  lastDetect = now
+  return detectCredentialFields()
+}
+
+// Observe DOM changes for dynamically injected forms/inputs
+try {
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (
+        Array.from(m.addedNodes || []).some((n) => {
+          if (n instanceof Element) {
+            return Boolean(n.querySelector("input, textarea, select"))
+          }
+          return false
+        })
+      ) {
+        // update lastDetect so next fill will use fresh detection
+        lastDetect = 0
+        break
+      }
+    }
+  })
+
+  observer.observe(document.documentElement || document.body, {
+    childList: true,
+    subtree: true
+  })
+} catch (e) {
+  // ignore observer errors on restricted pages
 }
 
 // Fill function: accepts credentials object
@@ -168,18 +205,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   console.log("Content script received message:", msg)
 
   if (msg?.type === "AUTOFILL_CREDENTIALS") {
-  chrome.storage.local.get("autofillData", (res) => {
-    if (res.autofillData) {
-      console.log("Loaded credentials from storage:", res.autofillData)
-      fillCredentials(res.autofillData)
-      sendResponse({ success: true })
-    } else {
-      console.warn("No saved autofill data found!")
-      sendResponse({ success: false, error: "No saved data" })
-    }
-  })
-  return true // important for async response
-}
+    chrome.storage.local.get("autofillData", (res) => {
+      if (res.autofillData) {
+        console.log("Loaded credentials from storage:", res.autofillData)
+        fillCredentials(res.autofillData)
+        sendResponse({ success: true })
+      } else {
+        console.warn("No saved autofill data found!")
+        sendResponse({ success: false, error: "No saved data" })
+      }
+    })
+    return true // important for async response
+  }
 
   sendResponse({ success: false, error: "Unknown message type" })
 })
