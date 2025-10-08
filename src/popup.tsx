@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   CreditCard,
   Globe,
   Settings,
@@ -21,12 +22,10 @@ export default function IndexPopup() {
   const [totalCount, setTotalCount] = useState<number | null>(null)
   const [isFilling, setIsFilling] = useState(false)
 
-  // Keep CustomTab route as before
   if (currentView === "custom") {
     return <CustomTab goBack={() => setCurrentView("main")} />
   }
 
-  // Reusable small primitives (kept minimal to avoid adding deps)
   const IconBox = ({ children }: { children: React.ReactNode }) => (
     <div className="plasmo-w-8 plasmo-h-8 plasmo-rounded-lg plasmo-flex plasmo-items-center plasmo-justify-center plasmo-bg-gradient-to-r plasmo-from-blue-500 plasmo-to-blue-600">
       {children}
@@ -113,8 +112,8 @@ export default function IndexPopup() {
           <div className="plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-mb-4">
             <button
               onClick={() => setCurrentView("main")}
-              className="plasmo-variant-ghost plasmo-size-sm plasmo-p-1 plasmo-h-auto">
-              ←
+              className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600">
+              <ArrowLeft size={16} />
             </button>
             <h2 className="plasmo-text-lg plasmo-font-semibold plasmo-text-gray-800">
               Settings
@@ -143,19 +142,21 @@ export default function IndexPopup() {
                   Automatically detect form fields
                 </p>
               </div>
-              <input type="checkbox" defaultChecked />
+              <input type="checkbox" defaultValue={0} />
             </div>
 
             <div className="plasmo-space-y-2 plasmo-pt-4 plasmo-border-t plasmo-border-gray-200">
-              <button className="plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-flex plasmo-items-center plasmo-gap-2">
+              <button
+                onClick={() => chrome.runtime.openOptionsPage()}
+                className="plasmo-justify-center plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-flex plasmo-items-center plasmo-gap-2">
                 <Globe className="plasmo-w-4 plasmo-h-4" />
                 Manage Websites
               </button>
-              <button className="plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-flex plasmo-items-center plasmo-gap-2">
+              <button className="plasmo-justify-center plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-flex plasmo-items-center plasmo-gap-2">
                 <CreditCard className="plasmo-w-4 plasmo-h-4" />
                 Payment Info
               </button>
-              <button className="plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-text-red-600 plasmo-flex plasmo-items-center plasmo-gap-2">
+              <button className="plasmo-justify-center plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-text-red-600 plasmo-flex plasmo-items-center plasmo-gap-2">
                 <Trash2 className="plasmo-w-4 plasmo-h-4" />
                 Clear All Data
               </button>

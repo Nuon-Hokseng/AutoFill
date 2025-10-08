@@ -1,4 +1,4 @@
-import { Check, RefreshCw, Wand2, X } from "lucide-react"
+import { AlertCircle, Check, RefreshCw, Wand2, X } from "lucide-react"
 import { useState } from "react"
 
 type FillResult = { filled?: number; total?: number } | null
@@ -11,7 +11,7 @@ export const FillButton = ({
   onStatusChange?: (s: "idle" | "loading" | "success" | "error") => void
 }) => {
   const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "error"
+    "idle" | "loading" | "success" | "error" | "noform"
   >("idle")
 
   const handleClick = async () => {
@@ -23,10 +23,20 @@ export const FillButton = ({
         action: "fillCredentials"
       })
       if (response?.success) {
-        setStatus("success")
-        if (onStatusChange) onStatusChange("success")
-        if (onResult)
-          onResult({ filled: response.filled ?? 0, total: response.total ?? 0 })
+        const total = response.total ?? 0
+        if (total === 0) {
+          setStatus("noform")
+          if (onStatusChange) onStatusChange("idle")
+          if (onResult) onResult({ filled: 0, total: 0 })
+        } else {
+          setStatus("success")
+          if (onStatusChange) onStatusChange("success")
+          if (onResult)
+            onResult({
+              filled: response.filled ?? 0,
+              total: response.total ?? 0
+            })
+        }
       } else {
         setStatus("error")
         if (onStatusChange) onStatusChange("error")
@@ -74,7 +84,17 @@ export const FillButton = ({
             aria-label="error"
             className="plasmo-text-red-500 plasmo-flex plasmo-items-center plasmo-gap-2">
             <X className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse" />
-            <span className="plasmo-text-sm plasmo-text-red-600">Failed</span>
+            <span className="plasmo-text-sm plasmo-text-red-600">No Form Detected</span>
+          </span>
+        )}
+        {status === "noform" && (
+          <span
+            aria-label="noform"
+            className="plasmo-text-yellow-600 plasmo-flex plasmo-items-center plasmo-gap-2">
+            <AlertCircle className="plasmo-w-5 plasmo-h-5" />
+            <span className="plasmo-text-sm plasmo-text-yellow-700">
+              No form detected
+            </span>
           </span>
         )}
       </div>

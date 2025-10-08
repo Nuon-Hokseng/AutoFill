@@ -24,7 +24,7 @@ function detectCredentialFields() {
   ) as HTMLInputElement[]
 
   // Detect each field type using specialized functions
-  // Use the combined scoring detector for core text fields
+  // Use the combined scoring detector
   const scored = detectFields(inputs)
   const emailEl = scored.email as HTMLInputElement | null
   const usernameEl = scored.username as HTMLInputElement | null
@@ -66,7 +66,6 @@ try {
           return false
         })
       ) {
-        // update lastDetect so next fill will use fresh detection
         lastDetect = 0
         break
       }
@@ -92,6 +91,9 @@ async function fillCredentials(credentials: {
   dob?: string
 }) {
   try {
+    // Prefer a fresh detection pass (throttled) if available, otherwise fallback
+    const detection = ensureFreshDetection() || detectCredentialFields()
+
     const {
       emailEl,
       usernameEl,
@@ -100,7 +102,7 @@ async function fillCredentials(credentials: {
       lastnameEL,
       genderRadios,
       dobSelect
-    } = detectCredentialFields()
+    } = detection
     console.log("Detected fields:", {
       email: emailEl ? `${emailEl.tagName}[${emailEl.type || "text"}]` : null,
       username: usernameEl
@@ -170,19 +172,16 @@ async function fillCredentials(credentials: {
       if (success) fieldsCount++
     }
 
-    // Handle gender radio buttons
     if (credentials.gender && genderRadios) {
       const success = await fillGender(genderRadios, credentials.gender)
       if (success) fieldsCount++
     }
 
-    // Handle date of birth selects
     if (dobSelect && credentials.dob) {
       const success = await fillDOB(dobSelect, credentials.dob)
       if (success) fieldsCount++
     }
 
-    // Final cleanup: Ensure all labels are properly positioned
     setTimeout(() => {
       const allInputs = document.querySelectorAll(
         'input[value]:not([value=""]), textarea[value]:not([value=""])'
@@ -204,7 +203,6 @@ async function fillCredentials(credentials: {
       console.warn("No fields were found to fill!")
     }
 
-    // Return counts so the caller can report stats
     return { filled: fieldsCount, total: totalDetected }
   } catch (error) {
     console.error("Error during autofill:", error)

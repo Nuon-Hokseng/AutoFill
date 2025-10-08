@@ -1,4 +1,13 @@
-import { ArrowLeft, Check, Eye, EyeOff, Trash2 } from "lucide-react"
+import {
+  ArrowLeft,
+  Check,
+  CheckCheck,
+  Eye,
+  EyeOff,
+  Trash,
+  Trash2,
+  X
+} from "lucide-react"
 import React, { useState } from "react"
 
 import { useStorage } from "@plasmohq/storage/hook"
@@ -17,7 +26,7 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
   const [form, setForm] = useStorage("autofillData", (v) =>
     v === undefined ? initialFormState : v
   )
-  const [status, setStatus] = useState("")
+  const [status, setStatus] = useState<React.ReactNode>("")
   const [showValues, setShowValues] = useState(false)
 
   const handleInputChange = (
@@ -37,15 +46,42 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
     }
 
     chrome.storage.local.set({ autofillData: payload }, () => {
-      setStatus("\u2705 Saved!")
+      setStatus(
+        <span className=" plasmo-flex plasmo-justify-center plasmo-items-center plasmo-gap-2 ">
+          <CheckCheck className=" plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-green-600" />
+          <span className="plasmo-text-gray-700">Saved</span>
+        </span>
+      )
       setTimeout(() => setStatus(""), 2000)
     })
   }
 
   const handleRemove = () => {
-    setForm(initialFormState)
-    setStatus("\ud83d\uddd1\ufe0f Removed!")
-    setTimeout(() => setStatus(""), 2000)
+    // Check if there is any saved data
+    chrome.storage.local.get("autofillData", (res) => {
+      if (!res.autofillData) {
+        setStatus(
+          <span className="plasmo-justify-center plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-text-gray-700">
+            <X className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-red-600" />
+            <span className="plasmo-text-gray-700">No data detected</span>
+          </span>
+        )
+        setTimeout(() => setStatus(""), 2000)
+        return
+      }
+
+      // Remove saved data
+      chrome.storage.local.remove("autofillData", () => {
+        setForm(initialFormState)
+        setStatus(
+          <span className="plasmo-justify-center plasmo-flex plasmo-items-center plasmo-gap-2 ">
+            <Trash className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-green-600" />
+            <span className="plasmo-text-gray-700">Removed!</span>
+          </span>
+        )
+        setTimeout(() => setStatus(""), 2000)
+      })
+    })
   }
 
   const inputFields = [

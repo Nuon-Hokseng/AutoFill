@@ -11,7 +11,8 @@ const USERNAME_KEYWORDS = [
   "login",
   "user_name",
   "user-id",
-  "userid"
+  "userid",
+  "Username"
 ]
 
 export function detectUsernameField(
