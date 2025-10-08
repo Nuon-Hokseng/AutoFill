@@ -1,4 +1,11 @@
-import { CreditCard, Globe, Settings, Trash2, User } from "lucide-react"
+import {
+  CreditCard,
+  Globe,
+  Settings,
+  Trash2,
+  User,
+  Wand2
+} from "lucide-react"
 import React, { useState } from "react"
 
 import CustomTab from "~features/custom-tab"
@@ -12,6 +19,7 @@ export default function IndexPopup() {
   const [currentView, setCurrentView] = useState<View>("main")
   const [filledCount, setFilledCount] = useState<number | null>(null)
   const [totalCount, setTotalCount] = useState<number | null>(null)
+  const [isFilling, setIsFilling] = useState(false)
 
   // Keep CustomTab route as before
   if (currentView === "custom") {
@@ -32,18 +40,7 @@ export default function IndexPopup() {
           <div className="plasmo-text-center plasmo-space-y-2">
             <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2 plasmo-mb-2">
               <IconBox>
-                <svg
-                  className="plasmo-w-4 plasmo-h-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor">
-                  <path
-                    d="M12 2v20"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <Wand2 size={18} className="plasmo-text-white" />
               </IconBox>
               <h2 className="plasmo-text-lg plasmo-font-semibold plasmo-text-gray-800">
                 Auto Fill Extension
@@ -61,23 +58,42 @@ export default function IndexPopup() {
                   setFilledCount(r?.filled ?? 0)
                   setTotalCount(r?.total ?? 0)
                 }}
+                onStatusChange={(s) => setIsFilling(s === "loading")}
               />
             </div>
 
-            <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-text-sm">
-              <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
-                <div className="plasmo-w-2 plasmo-h-2 plasmo-rounded-full plasmo-bg-green-500" />
-                <span className="plasmo-text-gray-600">Ready</span>
+            <div className="plasmo-space-y-2">
+              <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-text-sm">
+                <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+                  <div
+                    className={`plasmo-w-2 plasmo-h-2 plasmo-rounded-full ${isFilling ? "plasmo-bg-yellow-400" : "plasmo-bg-green-500"}`}
+                  />
+                  <span className="plasmo-text-gray-600">
+                    {isFilling ? "Filling..." : "Ready"}
+                  </span>
+                </div>
+                <div className="plasmo-text-gray-500">
+                  {filledCount ?? 0}/{totalCount ?? 0} filled
+                </div>
               </div>
-              <div className="plasmo-text-gray-500">
-                {filledCount ?? 0}/{totalCount ?? 0} filled
+
+              <div className="plasmo-flex plasmo-gap-1 plasmo-mt-1">
+                {Array.from({ length: Math.max(totalCount ?? 1, 1) }).map(
+                  (_, i) => {
+                    const filled = (filledCount ?? 0) > i
+                    return (
+                      <div
+                        key={i}
+                        className={`plasmo-flex-1 plasmo-h-2 plasmo-rounded ${filled ? "plasmo-bg-green-500" : "plasmo-bg-gray-200"}`}></div>
+                    )
+                  }
+                )}
               </div>
             </div>
           </div>
-
           <div className="plasmo-flex plasmo-gap-2 plasmo-pt-2 plasmo-border-t plasmo-border-gray-200">
             <button
-              onClick={() => chrome.runtime.openOptionsPage()}
+              onClick={() => setCurrentView("settings")}
               className="plasmo-flex-1 plasmo-text-gray-600 plasmo-hover:text-gray-800 plasmo-hover:bg-gray-100 plasmo-py-2 plasmo-rounded plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2">
               <Settings className="plasmo-w-4 plasmo-h-4" />
               Settings

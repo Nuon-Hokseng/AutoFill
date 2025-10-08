@@ -2,9 +2,6 @@
 import {
   detectDOBFields,
   detectGenderFields,
-  detectLastNameField,
-  detectPasswordField,
-  detectUsernameField,
   fillDOB,
   fillEmail,
   fillFirstName,
@@ -12,9 +9,7 @@ import {
   fillLastName,
   fillPassword,
   fillUsername,
-  getAssociatedLabel,
-  type DOBselect,
-  type GenderRadios
+  getAssociatedLabel
 } from "./Function/fill-info"
 import { detectFields } from "./Function/fill-info/fieldDetector"
 

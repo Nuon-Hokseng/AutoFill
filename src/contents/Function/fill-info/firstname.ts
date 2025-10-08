@@ -2,8 +2,7 @@
 import {
   fillFieldWithAnimation,
   getAssociatedLabelText,
-  matchesAny,
-  triggerEvents
+  matchesAny
 } from "./utils"
 
 const FIRSTNAME_KEYWORDS = [
