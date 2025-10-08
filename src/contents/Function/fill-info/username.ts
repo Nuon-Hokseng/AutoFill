@@ -1,5 +1,5 @@
 // Username field detection and filling functionality
-import { FIELD_KEYWORDS } from "./fieldDetector"
+import { FIELD_KEYWORDS } from "./keyword"
 import {
   fillFieldWithAnimation,
   getAssociatedLabelText,

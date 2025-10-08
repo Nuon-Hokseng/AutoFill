@@ -1,5 +1,5 @@
 // Gender field detection and filling functionality
-import { FIELD_KEYWORDS } from "./fieldDetector"
+import { FIELD_KEYWORDS } from "./keyword"
 import { getAssociatedLabelText, matchesAny } from "./utils"
 
 const GENDER_KEYWORDS: string[] = ([] as string[]).concat(

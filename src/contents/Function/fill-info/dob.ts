@@ -1,4 +1,4 @@
-import { FIELD_KEYWORDS } from "./fieldDetector"
+import { FIELD_KEYWORDS } from "./keyword"
 import { getAssociatedLabelText, matchesAny } from "./utils"
 
 const DOB_KEYWORDS: string[] = ([] as string[]).concat(

@@ -5,7 +5,7 @@ import {
   matchesAny
 } from "./utils"
 
-import { FIELD_KEYWORDS } from "./fieldDetector"
+import { FIELD_KEYWORDS } from "./keyword"
 const PASSWORD_KEYWORDS: string[] = ([] as string[]).concat(
   ...Object.values(FIELD_KEYWORDS)
 )
