@@ -1,42 +1,152 @@
-
+import { CreditCard, Globe, Settings, Trash2, User } from "lucide-react"
 import React, { useState } from "react"
-
 
 import CustomTab from "~features/custom-tab"
 import { FillButton } from "~features/fill-button"
 
 import "~style.css"
 
+type View = "main" | "settings" | "custom"
+
 export default function IndexPopup() {
-  const [activeCustomTab, setActiveCustomTab] = useState("home")
-  if (activeCustomTab === "custom") {
-    return <CustomTab goBack={() => setActiveCustomTab("home")} />
+  const [currentView, setCurrentView] = useState<View>("main")
+  const [filledCount, setFilledCount] = useState<number | null>(null)
+  const [totalCount, setTotalCount] = useState<number | null>(null)
+
+  // Keep CustomTab route as before
+  if (currentView === "custom") {
+    return <CustomTab goBack={() => setCurrentView("main")} />
   }
+
+  // Reusable small primitives (kept minimal to avoid adding deps)
+  const IconBox = ({ children }: { children: React.ReactNode }) => (
+    <div className="plasmo-w-8 plasmo-h-8 plasmo-rounded-lg plasmo-flex plasmo-items-center plasmo-justify-center plasmo-bg-gradient-to-r plasmo-from-blue-500 plasmo-to-blue-600">
+      {children}
+    </div>
+  )
+
   return (
-    <section>
-      <div className="plasmo-p-6 plasmo-w-64 plasmo-border-2 plasmo-border-pink-500 ">
-        <h1 className="plasmo-text-xl plasmo-font-bold plasmo-mb-4 plasmo-text-center">
-          Auto Fill Extension
-        </h1>
-        <p className="plasmo-text-gray-600 plasmo-mb-4 plasmo-text-center">
-          Click this button between fields to auto fill your credentials
-        </p>
-        <FillButton />
-        <div
-          id="buttons"
-          className="plasmo-flex plasmo-justify-between plasmo-mt-4">
-          <button
-            onClick={() => chrome.runtime.openOptionsPage()}
-            className="plasmo-text-gray-600 plasmo-text-center plasmo-mt-1">
-            Setting
-          </button>
-          <button
-            onClick={() => setActiveCustomTab("custom")}
-            className="plasmo-flex  plasmo-text-gray-600">
-            Custom 
-          </button>
+    <div className="plasmo-w-80 plasmo-bg-white plasmo-rounded-lg plasmo-shadow-2xl plasmo-border plasmo-border-gray-200 plasmo-overflow-hidden">
+      {currentView === "main" && (
+        <div className="plasmo-p-4 plasmo-space-y-4">
+          <div className="plasmo-text-center plasmo-space-y-2">
+            <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2 plasmo-mb-2">
+              <IconBox>
+                <svg
+                  className="plasmo-w-4 plasmo-h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor">
+                  <path
+                    d="M12 2v20"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </IconBox>
+              <h2 className="plasmo-text-lg plasmo-font-semibold plasmo-text-gray-800">
+                Auto Fill Extension
+              </h2>
+            </div>
+            <p className="plasmo-text-sm plasmo-text-gray-600 plasmo-leading-relaxed">
+              Click the button to auto-fill your credentials into focused fields
+            </p>
+          </div>
+
+          <div className="plasmo-space-y-3">
+            <div>
+              <FillButton
+                onResult={(r) => {
+                  setFilledCount(r?.filled ?? 0)
+                  setTotalCount(r?.total ?? 0)
+                }}
+              />
+            </div>
+
+            <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-text-sm">
+              <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+                <div className="plasmo-w-2 plasmo-h-2 plasmo-rounded-full plasmo-bg-green-500" />
+                <span className="plasmo-text-gray-600">Ready</span>
+              </div>
+              <div className="plasmo-text-gray-500">
+                {filledCount ?? 0}/{totalCount ?? 0} filled
+              </div>
+            </div>
+          </div>
+
+          <div className="plasmo-flex plasmo-gap-2 plasmo-pt-2 plasmo-border-t plasmo-border-gray-200">
+            <button
+              onClick={() => chrome.runtime.openOptionsPage()}
+              className="plasmo-flex-1 plasmo-text-gray-600 plasmo-hover:text-gray-800 plasmo-hover:bg-gray-100 plasmo-py-2 plasmo-rounded plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2">
+              <Settings className="plasmo-w-4 plasmo-h-4" />
+              Settings
+            </button>
+            <button
+              onClick={() => setCurrentView("custom")}
+              className="plasmo-flex-1 plasmo-text-gray-600 plasmo-hover:text-gray-800 plasmo-hover:bg-gray-100 plasmo-py-2 plasmo-rounded plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2">
+              <User className="plasmo-w-4 plasmo-h-4" />
+              Custom
+            </button>
+          </div>
         </div>
-      </div>
-    </section>
+      )}
+
+      {currentView === "settings" && (
+        <div className="plasmo-p-4 plasmo-space-y-4">
+          <div className="plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-mb-4">
+            <button
+              onClick={() => setCurrentView("main")}
+              className="plasmo-variant-ghost plasmo-size-sm plasmo-p-1 plasmo-h-auto">
+              ←
+            </button>
+            <h2 className="plasmo-text-lg plasmo-font-semibold plasmo-text-gray-800">
+              Settings
+            </h2>
+          </div>
+
+          <div className="plasmo-space-y-4">
+            <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-py-2">
+              <div>
+                <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
+                  Auto Fill Enabled
+                </div>
+                <p className="plasmo-text-xs plasmo-text-gray-500">
+                  Enable automatic form filling
+                </p>
+              </div>
+              <input type="checkbox" defaultChecked />
+            </div>
+
+            <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-py-2">
+              <div>
+                <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
+                  Smart Detection
+                </div>
+                <p className="plasmo-text-xs plasmo-text-gray-500">
+                  Automatically detect form fields
+                </p>
+              </div>
+              <input type="checkbox" defaultChecked />
+            </div>
+
+            <div className="plasmo-space-y-2 plasmo-pt-4 plasmo-border-t plasmo-border-gray-200">
+              <button className="plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-flex plasmo-items-center plasmo-gap-2">
+                <Globe className="plasmo-w-4 plasmo-h-4" />
+                Manage Websites
+              </button>
+              <button className="plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-flex plasmo-items-center plasmo-gap-2">
+                <CreditCard className="plasmo-w-4 plasmo-h-4" />
+                Payment Info
+              </button>
+              <button className="plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-text-red-600 plasmo-flex plasmo-items-center plasmo-gap-2">
+                <Trash2 className="plasmo-w-4 plasmo-h-4" />
+                Clear All Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Check, Eye, EyeOff, Trash2 } from "lucide-react"
 import React, { useState } from "react"
 
 import { useStorage } from "@plasmohq/storage/hook"
@@ -18,6 +18,7 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
     v === undefined ? initialFormState : v
   )
   const [status, setStatus] = useState("")
+  const [showValues, setShowValues] = useState(false)
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -58,92 +59,114 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
   ]
 
   return (
-    <div className="plasmo-p-6 plasmo-w-64 plasmo-border-2 plasmo-border-pink-500">
-      <button onClick={goBack} className="plasmo-flex plasmo-text-gray-600">
-        <ArrowLeft className="plasmo-mr-2" size={16} />
-      </button>
-      <h1 className="plasmo-text-xl plasmo-font-bold plasmo-text-center">
-        Custom Credentials
-      </h1>
-      <div className="plasmo-flex plasmo-flex-col plasmo-items-center plasmo-gap-2">
-        {inputFields.map(({ key, label, type }) => {
-          if (type === "select") {
+    <div className="plasmo-w-80 plasmo-bg-white plasmo-rounded-lg plasmo-shadow-2xl plasmo-border plasmo-border-gray-200 plasmo-overflow-hidden">
+      <div className="plasmo-p-4 plasmo-space-y-4">
+        <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-gap-2">
+          <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+            <button
+              onClick={goBack}
+              className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600">
+              <ArrowLeft size={16} />
+            </button>
+            <h1 className="plasmo-text-lg plasmo-font-semibold plasmo-text-gray-800">
+              Custom Credentials
+            </h1>
+          </div>
+          <button
+            onClick={() => setShowValues((s) => !s)}
+            className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600"
+            aria-label={showValues ? "Hide values" : "Show values"}>
+            {showValues ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
+
+        <div className="plasmo-space-y-3 plasmo-max-h-80 plasmo-overflow-y-auto">
+          {inputFields.map(({ key, label, type }) => {
+            if (type === "select") {
+              return (
+                <label key={key} htmlFor={key} className="plasmo-block">
+                  <span className="plasmo-block plasmo-text-sm plasmo-text-gray-700 plasmo-mb-1">
+                    {label}
+                  </span>
+                  <select
+                    id={key}
+                    value={form?.[key] || ""}
+                    onChange={handleInputChange}
+                    className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1">
+                    <option value="" disabled>
+                      Select...
+                    </option>
+                    <option value="1">Female</option>
+                    <option value="2">Male</option>
+                    <option value="-1">Custom</option>
+                  </select>
+                </label>
+              )
+            }
+
+            if (type === "date") {
+              return (
+                <label key={key} htmlFor={key} className="plasmo-block">
+                  <span className="plasmo-block plasmo-text-sm plasmo-text-gray-700 plasmo-mb-1">
+                    {label}
+                  </span>
+                  <input
+                    id={key}
+                    type="date"
+                    max="2010-01-01"
+                    value={form?.[key] || ""}
+                    onChange={handleInputChange as any}
+                    className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1 plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
+                  />
+                </label>
+              )
+            }
+
+            // For non-select/non-date inputs, toggle masking when showValues is false
+            const renderType =
+              type === "date" || type === "select"
+                ? type
+                : showValues
+                  ? type === "password"
+                    ? "text"
+                    : type
+                  : "password"
+
             return (
-              <label
-                key={key}
-                htmlFor={key}
-                className="plasmo-w-full plasmo-max-w-xs">
-                <span className="plasmo-block plasmo-text-sm plasmo-text-gray-500 plasmo-mb-1">
-                  {label}
-                </span>
-                <select
-                  id={key}
-                  value={form?.[key] || ""}
-                  onChange={handleInputChange}
-                  className="plasmo-w-full plasmo-border plasmo-border-gray-600 plasmo-rounded-md plasmo-px-2 plasmo-py-1">
-                  <option value="" disabled>
-                    Select...
-                  </option>
-                  <option value="1">Female</option>
-                  <option value="2">Male</option>
-                  <option value="-1">Custom</option>
-                </select>
-              </label>
-            )
-          }
-          if (type === "date") {
-            return (
-              <label
-                key={key}
-                htmlFor={key}
-                className="plasmo-w-full plasmo-max-w-xs">
-                <span className="plasmo-block plasmo-text-sm plasmo-text-gray-500 plasmo-mb-1">
+              <label key={key} htmlFor={key} className="plasmo-block">
+                <span className="plasmo-block plasmo-text-sm plasmo-text-gray-700 plasmo-mb-1">
                   {label}
                 </span>
                 <input
                   id={key}
-                  type="date"
-                  max="2010-01-01"
+                  type={renderType as any}
+                  placeholder={label}
                   value={form?.[key] || ""}
                   onChange={handleInputChange as any}
-                  className="plasmo-w-full plasmo-border plasmo-border-gray-600 plasmo-rounded-md plasmo-px-2 plasmo-py-1 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-blue-500"
+                  className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1 plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
                 />
               </label>
             )
-          }
-          return (
-            <label
-              key={key}
-              htmlFor={key}
-              className="plasmo-w-full plasmo-max-w-xs">
-              <span className="plasmo-block plasmo-text-sm plasmo-text-gray-500 plasmo-mb-1">
-                {label}
-              </span>
-              <input
-                id={key}
-                type={type}
-                placeholder={label}
-                value={form?.[key] || ""}
-                onChange={handleInputChange as any}
-                className="plasmo-w-full plasmo-border plasmo-border-gray-600 plasmo-rounded-md plasmo-px-2 plasmo-py-1 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-blue-500"
-              />
-            </label>
-          )
-        })}
+          })}
+        </div>
+
+        <div className="plasmo-flex plasmo-gap-2 plasmo-mt-2">
+          <button
+            onClick={handleRemove}
+            className="plasmo-p-2 plasmo-bg-gray-100 plasmo-rounded plasmo-w-full plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2">
+            <Trash2 className="plasmo-w-4 plasmo-h-4" />
+            Remove
+          </button>
+          <button
+            onClick={handleSave}
+            className="plasmo-p-2 plasmo-bg-blue-500 plasmo-text-white plasmo-rounded plasmo-w-full plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2">
+            <Check className="plasmo-w-4 plasmo-h-4" />
+            Save
+          </button>
+        </div>
+
+        {status && <p className="plasmo-text-center plasmo-mt-2">{status}</p>}
       </div>
-      <div className="plasmo-flex plasmo-gap-2 plasmo-mt-4">
-        <button
-          onClick={handleRemove}
-          className="plasmo-p-2 plasmo-bg-gray-300 plasmo-rounded plasmo-w-full">
-          Remove
-        </button>
-        <button
-          onClick={handleSave}
-          className="plasmo-p-2 plasmo-bg-blue-500 plasmo-text-white plasmo-rounded plasmo-w-full">
-          Save
-        </button>
-      </div>
-      {status && <p className="plasmo-text-center plasmo-mt-2">{status}</p>}
     </div>
   )
 }

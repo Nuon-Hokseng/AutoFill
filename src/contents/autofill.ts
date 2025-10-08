@@ -135,6 +135,19 @@ async function fillCredentials(credentials: {
     })
 
     let fieldsCount = 0
+    // Count how many fields were detected (potential fields to fill)
+    const totalDetected = [
+      !!firstnameEL,
+      !!lastnameEL,
+      !!usernameEl,
+      !!emailEl,
+      !!passwordEl,
+      !!(
+        genderRadios &&
+        (genderRadios.male || genderRadios.female || genderRadios.custom)
+      ),
+      !!(dobSelect && (dobSelect.day || dobSelect.month || dobSelect.year))
+    ].reduce((s, v) => s + (v ? 1 : 0), 0)
 
     // Fill fields using specialized functions
     if (firstnameEL && credentials.firstname) {
@@ -195,6 +208,9 @@ async function fillCredentials(credentials: {
     if (fieldsCount === 0) {
       console.warn("No fields were found to fill!")
     }
+
+    // Return counts so the caller can report stats
+    return { filled: fieldsCount, total: totalDetected }
   } catch (error) {
     console.error("Error during autofill:", error)
   }
@@ -208,8 +224,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     chrome.storage.local.get("autofillData", (res) => {
       if (res.autofillData) {
         console.log("Loaded credentials from storage:", res.autofillData)
-        fillCredentials(res.autofillData)
-        sendResponse({ success: true })
+        fillCredentials(res.autofillData).then((result) => {
+          sendResponse({ success: true, ...(result || {}) })
+        })
       } else {
         console.warn("No saved autofill data found!")
         sendResponse({ success: false, error: "No saved data" })
