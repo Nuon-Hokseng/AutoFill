@@ -1,33 +1,160 @@
 import { getAssociatedLabelText } from "./utils"
 
-type FieldName = "username" | "email" | "password" | "firstname" | "lastname"
+type FieldName =
+  | "username"
+  | "email"
+  | "password"
+  | "firstname"
+  | "lastname"
+  | "gender"
+  | "address"
+  | "city"
+  | "state"
+  | "zipcode"
+  | "country"
+  | "phone"
+  | "dob"
 
 interface FieldDetection {
   input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
   scores: Record<FieldName, number>
 }
 
-const FIELD_KEYWORDS: Record<FieldName, string[]> = {
+export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
+  gender: [
+    "gender",
+    "sex",
+    "gender identity",
+    "gender_id",
+    "genderid",
+    "gender type",
+    "gender selection",
+    "select gender",
+    "your gender",
+    "biological sex",
+    "sex assigned at birth",
+    "male female",
+    "m/f",
+    "mf",
+    "choose gender",
+    "user gender",
+    "customer gender"
+  ],
   username: [
     "username",
+    "user name",
+    "user-name",
+    "user_name",
     "user",
     "login",
+    "login name",
     "account",
+    "account name",
     "usr",
     "user_id",
     "userid",
-    "handle"
+    "handle",
+    "nickname",
+    "profile name",
+    "screen name"
   ],
-  email: ["email", "e-mail", "mail", "contact"],
-  password: ["password", "pass", "pwd", "passwd"],
-  firstname: ["first name", "firstname", "given name", "given-name", "fname"],
+  email: [
+    "email",
+    "e-mail",
+    "e mail",
+    "mail",
+    "contact email",
+    "email address",
+    "emailaddress",
+    "contact",
+    "email id",
+    "primary email",
+    "work email",
+    "personal email"
+  ],
+  password: [
+    "password",
+    "pass word",
+    "pass",
+    "pwd",
+    "passwd",
+    "user password",
+    "account password",
+    "secret",
+    "pin",
+    "security code"
+  ],
+  firstname: [
+    "first name",
+    "firstname",
+    "given name",
+    "given-name",
+    "fname",
+    "f name",
+    "forename",
+    "first",
+    "user first name",
+    "customer first name"
+  ],
   lastname: [
     "last name",
     "lastname",
     "surname",
     "family name",
     "family-name",
-    "lname"
+    "lname",
+    "l name",
+    "second name",
+    "last",
+    "user last name",
+    "customer last name"
+  ],
+  phone: [
+    "phone",
+    "phone number",
+    "mobile",
+    "mobile number",
+    "telephone",
+    "tel",
+    "contact number",
+    "cell",
+    "cellphone",
+    "contact phone",
+    "whatsapp number"
+  ],
+  address: [
+    "address",
+    "street address",
+    "home address",
+    "billing address",
+    "shipping address",
+    "location",
+    "residence",
+    "addr",
+    "address line"
+  ],
+  city: ["city", "town", "municipality", "locality", "village"],
+  state: ["state", "province", "region", "territory", "county", "governorate"],
+  zipcode: [
+    "zip",
+    "zip code",
+    "zipcode",
+    "postal code",
+    "post code",
+    "pin code",
+    "pincode",
+    "postal",
+    "zip_code"
+  ],
+  country: ["country", "nation", "country name", "country_code", "nationality"],
+  dob: [
+    "dob",
+    "date of birth",
+    "birth date",
+    "birthdate",
+    "birthday",
+    "bday",
+    "dateofbirth"
   ]
 }
 
@@ -107,7 +234,15 @@ export function detectFields(
       email: 0,
       password: 0,
       firstname: 0,
-      lastname: 0
+      lastname: 0,
+      address: 0,
+      gender: 0,
+      city: 0,
+      state: 0,
+      zipcode: 0,
+      country: 0,
+      phone: 0,
+      dob: 0
     }
 
     for (const field of Object.keys(FIELD_KEYWORDS) as FieldName[]) {
@@ -138,7 +273,15 @@ export function detectFields(
     email: null,
     password: null,
     firstname: null,
-    lastname: null
+    lastname: null,
+    gender: null,
+    address: undefined,
+    city: undefined,
+    state: undefined,
+    zipcode: undefined,
+    country: undefined,
+    phone: undefined,
+    dob: undefined
   }
 
   for (const field of Object.keys(FIELD_KEYWORDS) as FieldName[]) {

@@ -1,13 +1,9 @@
+import { FIELD_KEYWORDS } from "./fieldDetector"
 import { getAssociatedLabelText, matchesAny } from "./utils"
 
-const DOB_KEYWORDS = [
-  "birthday_day",
-  "birthday_month",
-  "birthday_year",
-  "Day",
-  "Month",
-  "Year"
-]
+const DOB_KEYWORDS: string[] = ([] as string[]).concat(
+  ...Object.values(FIELD_KEYWORDS)
+)
 
 export interface DOBselect {
   day: HTMLSelectElement | null

@@ -1,7 +1,10 @@
 // Gender field detection and filling functionality
+import { FIELD_KEYWORDS } from "./fieldDetector"
 import { getAssociatedLabelText, matchesAny } from "./utils"
 
-const GENDER_KEYWORDS = ["gender", "sex"]
+const GENDER_KEYWORDS: string[] = ([] as string[]).concat(
+  ...Object.values(FIELD_KEYWORDS)
+)
 
 export interface GenderRadios {
   male: HTMLInputElement | null

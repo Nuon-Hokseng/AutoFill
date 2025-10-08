@@ -1,25 +1,14 @@
 // Last name field detection and filling functionality
+import { FIELD_KEYWORDS } from "./fieldDetector"
 import {
   fillFieldWithAnimation,
   getAssociatedLabelText,
   matchesAny
 } from "./utils"
 
-const LASTNAME_KEYWORDS = [
-  "last Name",
-  "last name",
-  "Last name",
-  "lastName",
-  "lastname",
-  "last_name",
-  "family-name",
-  "familyName",
-  "familyname",
-  "lname",
-  "surname",
-  "SurName",
-  "surName"
-]
+const LASTNAME_KEYWORDS: string[] = ([] as string[]).concat(
+  ...Object.values(FIELD_KEYWORDS)
+)
 
 export function detectLastNameField(
   inputs: HTMLInputElement[]

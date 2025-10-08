@@ -1,20 +1,14 @@
 // First name field detection and filling functionality
+import { FIELD_KEYWORDS } from "./fieldDetector"
 import {
   fillFieldWithAnimation,
   getAssociatedLabelText,
   matchesAny
 } from "./utils"
 
-const FIRSTNAME_KEYWORDS = [
-  "First name",
-  "first name",
-  "First Name",
-  "firstName",
-  "firstname",
-  "first_name",
-  "given-name",
-  "fname"
-]
+const FIRSTNAME_KEYWORDS: string[] = ([] as string[]).concat(
+  ...Object.values(FIELD_KEYWORDS)
+)
 
 export function detectFirstNameField(
   inputs: HTMLInputElement[]

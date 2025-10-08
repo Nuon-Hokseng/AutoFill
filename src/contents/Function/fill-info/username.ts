@@ -1,19 +1,14 @@
 // Username field detection and filling functionality
+import { FIELD_KEYWORDS } from "./fieldDetector"
 import {
   fillFieldWithAnimation,
   getAssociatedLabelText,
   matchesAny
 } from "./utils"
 
-const USERNAME_KEYWORDS = [
-  "username",
-  "user",
-  "login",
-  "user_name",
-  "user-id",
-  "userid",
-  "Username"
-]
+const USERNAME_KEYWORDS: string[] = ([] as string[]).concat(
+  ...Object.values(FIELD_KEYWORDS)
+)
 
 export function detectUsernameField(
   inputs: HTMLInputElement[]

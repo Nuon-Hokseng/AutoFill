@@ -42,7 +42,7 @@ export default function IndexPopup() {
                 <Wand2 size={18} className="plasmo-text-white" />
               </IconBox>
               <h2 className="plasmo-text-lg plasmo-font-semibold plasmo-text-gray-800">
-                Auto Fill Extension
+                Auto Fill Extension pee
               </h2>
             </div>
             <p className="plasmo-text-sm plasmo-text-gray-600 plasmo-leading-relaxed">
