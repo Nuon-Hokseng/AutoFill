@@ -2,9 +2,6 @@
 import {
   detectDOBFields,
   detectGenderFields,
-  detectLastNameField,
-  detectPasswordField,
-  detectUsernameField,
   fillDOB,
   fillEmail,
   fillFirstName,
@@ -12,9 +9,7 @@ import {
   fillLastName,
   fillPassword,
   fillUsername,
-  getAssociatedLabel,
-  type DOBselect,
-  type GenderRadios
+  getAssociatedLabel
 } from "./Function/fill-info"
 import { detectFields } from "./Function/fill-info/fieldDetector"
 
@@ -29,7 +24,7 @@ function detectCredentialFields() {
   ) as HTMLInputElement[]
 
   // Detect each field type using specialized functions
-  // Use the combined scoring detector for core text fields
+  // Use the combined scoring detector
   const scored = detectFields(inputs)
   const emailEl = scored.email as HTMLInputElement | null
   const usernameEl = scored.username as HTMLInputElement | null
@@ -71,7 +66,6 @@ try {
           return false
         })
       ) {
-        // update lastDetect so next fill will use fresh detection
         lastDetect = 0
         break
       }
@@ -97,6 +91,9 @@ async function fillCredentials(credentials: {
   dob?: string
 }) {
   try {
+    // Prefer a fresh detection pass (throttled) if available, otherwise fallback
+    const detection = ensureFreshDetection() || detectCredentialFields()
+
     const {
       emailEl,
       usernameEl,
@@ -105,7 +102,7 @@ async function fillCredentials(credentials: {
       lastnameEL,
       genderRadios,
       dobSelect
-    } = detectCredentialFields()
+    } = detection
     console.log("Detected fields:", {
       email: emailEl ? `${emailEl.tagName}[${emailEl.type || "text"}]` : null,
       username: usernameEl
@@ -135,6 +132,19 @@ async function fillCredentials(credentials: {
     })
 
     let fieldsCount = 0
+    // Count how many fields were detected (potential fields to fill)
+    const totalDetected = [
+      !!firstnameEL,
+      !!lastnameEL,
+      !!usernameEl,
+      !!emailEl,
+      !!passwordEl,
+      !!(
+        genderRadios &&
+        (genderRadios.male || genderRadios.female || genderRadios.custom)
+      ),
+      !!(dobSelect && (dobSelect.day || dobSelect.month || dobSelect.year))
+    ].reduce((s, v) => s + (v ? 1 : 0), 0)
 
     // Fill fields using specialized functions
     if (firstnameEL && credentials.firstname) {
@@ -162,19 +172,16 @@ async function fillCredentials(credentials: {
       if (success) fieldsCount++
     }
 
-    // Handle gender radio buttons
     if (credentials.gender && genderRadios) {
       const success = await fillGender(genderRadios, credentials.gender)
       if (success) fieldsCount++
     }
 
-    // Handle date of birth selects
     if (dobSelect && credentials.dob) {
       const success = await fillDOB(dobSelect, credentials.dob)
       if (success) fieldsCount++
     }
 
-    // Final cleanup: Ensure all labels are properly positioned
     setTimeout(() => {
       const allInputs = document.querySelectorAll(
         'input[value]:not([value=""]), textarea[value]:not([value=""])'
@@ -195,6 +202,8 @@ async function fillCredentials(credentials: {
     if (fieldsCount === 0) {
       console.warn("No fields were found to fill!")
     }
+
+    return { filled: fieldsCount, total: totalDetected }
   } catch (error) {
     console.error("Error during autofill:", error)
   }
@@ -208,8 +217,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     chrome.storage.local.get("autofillData", (res) => {
       if (res.autofillData) {
         console.log("Loaded credentials from storage:", res.autofillData)
-        fillCredentials(res.autofillData)
-        sendResponse({ success: true })
+        fillCredentials(res.autofillData).then((result) => {
+          sendResponse({ success: true, ...(result || {}) })
+        })
       } else {
         console.warn("No saved autofill data found!")
         sendResponse({ success: false, error: "No saved data" })

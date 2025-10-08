@@ -5,7 +5,10 @@ import {
   matchesAny
 } from "./utils"
 
-const PASSWORD_KEYWORDS = ["password", "passwd", "pass"]
+import { FIELD_KEYWORDS } from "./keyword"
+const PASSWORD_KEYWORDS: string[] = ([] as string[]).concat(
+  ...Object.values(FIELD_KEYWORDS)
+)
 
 export function detectPasswordField(
   inputs: HTMLInputElement[]

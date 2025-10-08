@@ -1,34 +1,10 @@
 import { getAssociatedLabelText } from "./utils"
-
-type FieldName = "username" | "email" | "password" | "firstname" | "lastname"
+import { FIELD_KEYWORDS } from "./keyword"
+import type { FieldName } from "./keyword"
 
 interface FieldDetection {
   input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
   scores: Record<FieldName, number>
-}
-
-const FIELD_KEYWORDS: Record<FieldName, string[]> = {
-  username: [
-    "username",
-    "user",
-    "login",
-    "account",
-    "usr",
-    "user_id",
-    "userid",
-    "handle"
-  ],
-  email: ["email", "e-mail", "mail", "contact"],
-  password: ["password", "pass", "pwd", "passwd"],
-  firstname: ["first name", "firstname", "given name", "given-name", "fname"],
-  lastname: [
-    "last name",
-    "lastname",
-    "surname",
-    "family name",
-    "family-name",
-    "lname"
-  ]
 }
 
 function normalize(str: string | null | undefined) {
@@ -107,7 +83,15 @@ export function detectFields(
       email: 0,
       password: 0,
       firstname: 0,
-      lastname: 0
+      lastname: 0,
+      address: 0,
+      gender: 0,
+      city: 0,
+      state: 0,
+      zipcode: 0,
+      country: 0,
+      phone: 0,
+      dob: 0
     }
 
     for (const field of Object.keys(FIELD_KEYWORDS) as FieldName[]) {
@@ -138,7 +122,15 @@ export function detectFields(
     email: null,
     password: null,
     firstname: null,
-    lastname: null
+    lastname: null,
+    gender: null,
+    address: undefined,
+    city: undefined,
+    state: undefined,
+    zipcode: undefined,
+    country: undefined,
+    phone: undefined,
+    dob: undefined
   }
 
   for (const field of Object.keys(FIELD_KEYWORDS) as FieldName[]) {
