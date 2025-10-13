@@ -10,8 +10,8 @@ import {
   fillPassword,
   fillUsername,
   getAssociatedLabel
-} from "./Function/fill-info"
-import { detectFields } from "./Function/fill-info/fieldDetector"
+} from "./Function"
+import { detectFields } from "./Function/Detector/Agorithms"
 
 console.log("Autofill content script loaded")
 

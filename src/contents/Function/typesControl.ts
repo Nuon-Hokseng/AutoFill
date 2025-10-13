@@ -1,6 +1,6 @@
 // Shared TypeScript interfaces for autofill functionality
 
-import type { DOBselect } from "./dob"
+import type { DOBselect } from "./Fill-function/dob"
 
 export interface Credentials {
   email?: string
@@ -27,5 +27,3 @@ export interface GenderRadios {
   female: HTMLInputElement | null
   custom: HTMLInputElement | null
 }
-
-

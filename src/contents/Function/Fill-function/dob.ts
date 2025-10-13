@@ -1,5 +1,5 @@
-import { FIELD_KEYWORDS } from "./keyword"
-import { getAssociatedLabelText, matchesAny } from "./utils"
+import { FIELD_KEYWORDS } from "../Detector/keyword"
+import { getAssociatedLabelText, matchesAny } from "../Detector/utils"
 
 const DOB_KEYWORDS: string[] = ([] as string[]).concat(
   ...Object.values(FIELD_KEYWORDS)

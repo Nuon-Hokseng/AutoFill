@@ -1,6 +1,6 @@
-import { getAssociatedLabelText } from "./utils"
 import { FIELD_KEYWORDS } from "./keyword"
 import type { FieldName } from "./keyword"
+import { getAssociatedLabelText } from "./utils"
 
 interface FieldDetection {
   input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -11,7 +11,7 @@ function normalize(str: string | null | undefined) {
   return (str || "").toString().toLowerCase()
 }
 
-// simple fuzzy-ish scoring: exact token inclusion gives higher weight, substring gives smaller
+// scoring system
 function scoreMatch(text: string, keywords: string[]): number {
   const t = normalize(text)
   if (!t) return 0
@@ -19,11 +19,11 @@ function scoreMatch(text: string, keywords: string[]): number {
   for (const kw of keywords) {
     const k = kw.toLowerCase()
     if (t === k) {
-      score += 4 // exact
+      score += 4
     } else if (t.includes(k)) {
-      score += 2 // contains
+      score += 2
     } else {
-      // token-level: split on non-word chars and check
+      // split on non-word chars and check
       const tokens = t.split(/\W+/)
       if (tokens.includes(k)) score += 3
     }
@@ -143,7 +143,7 @@ export function detectFields(
         bestInput = det.input
       }
     }
-    // only assign if we have some confidence
+    // only assign if we have some confidence based on score
     finalFields[field] = bestScore > 0 ? (bestInput as any) : null
   }
 
