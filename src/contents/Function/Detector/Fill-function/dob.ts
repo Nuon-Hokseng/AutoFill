@@ -1,6 +1,6 @@
-import { FIELD_KEYWORDS } from "../Detector/keyword"
-import { getAssociatedLabelText, matchesAny } from "../Detector/utils"
-import { detectDOBInputs, triggerInputEvents } from "../Detector/dobInputHelper"
+import { FIELD_KEYWORDS } from "../keyword"
+import { getAssociatedLabelText, matchesAny } from "../utils"
+import { detectDOBInputs, triggerInputEvents } from "../dobInputHelper"
 
 const DOB_KEYWORDS: string[] = ([] as string[]).concat(
   ...Object.values(FIELD_KEYWORDS)

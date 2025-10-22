@@ -1,10 +1,10 @@
 // Email field detection and filling functionality
-import { FIELD_KEYWORDS } from "../Detector/keyword"
+import { FIELD_KEYWORDS } from "../keyword"
 import {
   fillFieldWithAnimation,
   getAssociatedLabelText,
   matchesAny
-} from "../Detector/utils"
+} from "../utils"
 
 const EMAIL_KEYWORDS: string[] = ([] as string[]).concat(
   ...Object.values(FIELD_KEYWORDS)
