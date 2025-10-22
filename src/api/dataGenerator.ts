@@ -10,9 +10,11 @@ export async function generateDummyData() {
     - username
     - email
     - password
-    - first name
-    - last name
-    - date of birth (DD-MM-YYYY)
+    - firstname
+    - lastname
+    - DOB (DD-MM-YYYY)
+    - zipcode
+    - postalcode
   `
 
   try {
