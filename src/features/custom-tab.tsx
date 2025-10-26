@@ -47,9 +47,9 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
 
     chrome.storage.local.set({ autofillData: payload }, () => {
       setStatus(
-        <span className=" plasmo-flex plasmo-justify-center plasmo-items-center plasmo-gap-2 ">
-          <CheckCheck className=" plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-green-600" />
-          <span className="plasmo-text-gray-700">Saved</span>
+        <span className=" flex justify-center items-center gap-2 ">
+          <CheckCheck className=" w-5 h-5 animate-pulse text-green-600" />
+          <span className="text-gray-700">Saved</span>
         </span>
       )
       setTimeout(() => setStatus(""), 2000)
@@ -61,9 +61,9 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
     chrome.storage.local.get("autofillData", (res) => {
       if (!res.autofillData) {
         setStatus(
-          <span className="plasmo-justify-center plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-text-gray-700">
-            <X className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-red-600" />
-            <span className="plasmo-text-gray-700">No data detected</span>
+          <span className="justify-center flex items-center gap-2 text-gray-700">
+            <X className="w-5 h-5 animate-pulse text-red-600" />
+            <span className="text-gray-700">No data detected</span>
           </span>
         )
         setTimeout(() => setStatus(""), 2000)
@@ -74,9 +74,9 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
       chrome.storage.local.remove("autofillData", () => {
         setForm(initialFormState)
         setStatus(
-          <span className="plasmo-justify-center plasmo-flex plasmo-items-center plasmo-gap-2 ">
-            <Trash className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-green-600" />
-            <span className="plasmo-text-gray-700">Removed!</span>
+          <span className="justify-center flex items-center gap-2 ">
+            <Trash className="w-5 h-5 animate-pulse text-green-600" />
+            <span className="text-gray-700">Removed!</span>
           </span>
         )
         setTimeout(() => setStatus(""), 2000)
@@ -95,40 +95,40 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
   ]
 
   return (
-    <div className="plasmo-w-80 plasmo-bg-white plasmo-rounded-lg plasmo-shadow-2xl plasmo-border plasmo-border-gray-200 plasmo-overflow-hidden">
-      <div className="plasmo-p-4 plasmo-space-y-4">
-        <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-gap-2">
-          <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+    <div className="w-80 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
+      <div className="p-4 space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={goBack}
-              className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600">
+              className="p-1 rounded text-gray-600">
               <ArrowLeft size={16} />
             </button>
-            <h1 className="plasmo-text-lg plasmo-font-semibold plasmo-text-gray-800">
+            <h1 className="text-lg font-semibold text-gray-800">
               Custom Credentials
             </h1>
           </div>
           <button
             onClick={() => setShowValues((s) => !s)}
-            className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600"
+            className="p-1 rounded text-gray-600"
             aria-label={showValues ? "Hide values" : "Show values"}>
             {showValues ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
 
-        <div className="plasmo-space-y-3 plasmo-max-h-80 plasmo-overflow-y-auto">
+        <div className="space-y-3 max-h-80 overflow-y-auto">
           {inputFields.map(({ key, label, type }) => {
             if (type === "select") {
               return (
-                <label key={key} htmlFor={key} className="plasmo-block">
-                  <span className="plasmo-block plasmo-text-sm plasmo-text-gray-700 plasmo-mb-1">
+                <label key={key} htmlFor={key} className="block">
+                  <span className="block text-sm text-gray-700 mb-1">
                     {label}
                   </span>
                   <select
                     id={key}
                     value={form?.[key] || ""}
                     onChange={handleInputChange}
-                    className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1">
+                    className="w-full border border-gray-300 rounded-md px-2 py-1">
                     <option value="" disabled>
                       Select...
                     </option>
@@ -142,8 +142,8 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
 
             if (type === "date") {
               return (
-                <label key={key} htmlFor={key} className="plasmo-block">
-                  <span className="plasmo-block plasmo-text-sm plasmo-text-gray-700 plasmo-mb-1">
+                <label key={key} htmlFor={key} className="block">
+                  <span className="block text-sm text-gray-700 mb-1">
                     {label}
                   </span>
                   <input
@@ -152,7 +152,7 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
                     max="2010-01-01"
                     value={form?.[key] || ""}
                     onChange={handleInputChange as any}
-                    className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1 plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </label>
               )
@@ -169,8 +169,8 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
                   : "password"
 
             return (
-              <label key={key} htmlFor={key} className="plasmo-block">
-                <span className="plasmo-block plasmo-text-sm plasmo-text-gray-700 plasmo-mb-1">
+              <label key={key} htmlFor={key} className="block">
+                <span className="block text-sm text-gray-700 mb-1">
                   {label}
                 </span>
                 <input
@@ -179,29 +179,29 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
                   placeholder={label}
                   value={form?.[key] || ""}
                   onChange={handleInputChange as any}
-                  className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1 plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </label>
             )
           })}
         </div>
 
-        <div className="plasmo-flex plasmo-gap-2 plasmo-mt-2">
+        <div className="flex gap-2 mt-2">
           <button
             onClick={handleRemove}
-            className="plasmo-p-2 plasmo-bg-gray-100 plasmo-rounded plasmo-w-full plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2">
-            <Trash2 className="plasmo-w-4 plasmo-h-4" />
+            className="p-2 bg-gray-100 rounded w-full flex items-center justify-center gap-2">
+            <Trash2 className="w-4 h-4" />
             Remove
           </button>
           <button
             onClick={handleSave}
-            className="plasmo-p-2 plasmo-bg-blue-500 plasmo-text-white plasmo-rounded plasmo-w-full plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2">
-            <Check className="plasmo-w-4 plasmo-h-4" />
+            className="p-2 bg-blue-500 text-white rounded w-full flex items-center justify-center gap-2">
+            <Check className="w-4 h-4" />
             Save
           </button>
         </div>
 
-        {status && <p className="plasmo-text-center plasmo-mt-2">{status}</p>}
+        {status && <p className="text-center mt-2">{status}</p>}
       </div>
     </div>
   )
