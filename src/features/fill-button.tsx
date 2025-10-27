@@ -1,5 +1,6 @@
 import { AlertCircle, Check, RefreshCw, Wand2, X } from "lucide-react"
 import { useState } from "react"
+import React = require("react");
 
 type FillResult = { filled?: number; total?: number } | null
 

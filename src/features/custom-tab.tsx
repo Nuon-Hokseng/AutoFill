@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from "react"
 
 import { useStorage } from "@plasmohq/storage/hook"
+import React = require("react")
 
 const initialFormState = {
   username: "",

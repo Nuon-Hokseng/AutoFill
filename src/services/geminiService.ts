@@ -17,8 +17,8 @@ export interface DummyUserData {
   password: string
   firstname: string
   lastname: string
-  dob: string // DD-MM-YYYY format
-  gender: string // "1" for Female, "2" for Male
+  dob: string 
+  gender: string 
   zipcode?: string
   postalcode?: string
 }
@@ -116,6 +116,28 @@ export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
   }
 
   return newData
+}
+
+// Preload data into cache without waiting
+export function preloadData(): void {
+  console.log("🚀 Preloading dummy data in background...")
+  generateDummyData()
+    .then((data) => {
+      if (data) {
+        cachedData = data
+        cacheTimestamp = Date.now()
+        console.log("✅ Dummy data preloaded and ready!")
+      }
+    })
+    .catch((error) => {
+      console.error("Error preloading dummy data:", error)
+    })
+}
+
+// Check if cache has valid data
+export function hasCachedData(): boolean {
+  const now = Date.now()
+  return cachedData !== null && now - cacheTimestamp < CACHE_DURATION
 }
 
 // Force refresh the cached data

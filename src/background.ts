@@ -1,7 +1,46 @@
 // Background script to show messages between popup and content scripts
-import { getAutofillData } from "~services/storageService"
+import { hasCachedData, preloadData } from "~services/geminiService"
+import { getAutofillData, hasCustomData } from "~services/storageService"
 
 console.log("Background script loaded")
+
+// Preload dummy data on extension startup (only if no custom data exists)
+chrome.runtime.onInstalled.addListener(() => {
+  console.log("🔧 Extension installed/updated")
+  initializePreload()
+})
+
+// Also preload on startup
+chrome.runtime.onStartup.addListener(() => {
+  console.log("🚀 Extension startup")
+  initializePreload()
+})
+
+// Initialize preload logic
+async function initializePreload() {
+  const customDataExists = await hasCustomData()
+
+  if (!customDataExists && !hasCachedData()) {
+    console.log("🎯 No custom data found, preloading AI-generated data...")
+    preloadData()
+  } else if (customDataExists) {
+    console.log("📝 Custom data exists, skipping preload")
+  } else {
+    console.log("📦 Data already cached")
+  }
+}
+
+// Also preload when popup opens (if needed)
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "popup") {
+    hasCustomData().then((exists) => {
+      if (!exists && !hasCachedData()) {
+        console.log("🎯 Popup opened, ensuring data is preloaded...")
+        preloadData()
+      }
+    })
+  }
+})
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
