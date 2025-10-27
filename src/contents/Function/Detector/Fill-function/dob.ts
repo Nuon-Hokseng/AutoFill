@@ -75,7 +75,7 @@ export function detectDOBFields(): DOBselect {
           "dob_month",
           "date_month"
         ]) ||
-          matchesAny(id, ["month", "birth_month", "dob_month", "date_month"]) ||
+          matchesAny(id, DOB_KEYWORDS) ||
           matchesAny(labelText, [
             "month",
             "birth month",
@@ -87,8 +87,8 @@ export function detectDOBFields(): DOBselect {
         console.log("Found month select with text-based detection")
       } else if (
         !dobselect.year &&
-        (matchesAny(value, ["year", "birth_year", "dob_year", "date_year"]) ||
-          matchesAny(id, ["year", "birth_year", "dob_year", "date_year"]) ||
+        (matchesAny(value, DOB_KEYWORDS) ||
+          matchesAny(id, DOB_KEYWORDS) ||
           matchesAny(labelText, [
             "year",
             "birth year",
@@ -102,7 +102,6 @@ export function detectDOBFields(): DOBselect {
     }
   }
 
-  // ====== DETECT INPUT FIELDS (NEW LOGIC) ======
   detectDOBInputs(dobselect, DOB_KEYWORDS)
 
   return dobselect
