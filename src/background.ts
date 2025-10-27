@@ -1,6 +1,10 @@
 // Background script to show messages between popup and content scripts
 import { hasCachedData, preloadData } from "~services/geminiService"
-import { getAutofillData, hasCustomData } from "~services/storageService"
+import {
+  getAutofillData,
+  hasCustomData,
+  saveGeneratedDataAfterUse
+} from "~services/storageService"
 
 console.log("Background script loaded")
 
@@ -74,6 +78,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               },
               (response) => {
                 console.log("Content script response:", response)
+
+                // If autofill was successful and used generated data, save it for future reference
+                if (response?.success && source === "generated") {
+                  console.log("💾 Attempting to save generated data:", data)
+                  saveGeneratedDataAfterUse(data).then((result) => {
+                    if (result.success) {
+                      console.log(
+                        "✅ Generated data saved to storage for future use"
+                      )
+                      // Verify it was saved
+                      chrome.storage.local.get("autofillData", (res) => {
+                        console.log("✔️ Verified saved data:", res.autofillData)
+                      })
+                    } else {
+                      console.log(
+                        "⚠️ Data was not saved (custom data exists or error)"
+                      )
+                    }
+                  })
+                }
+
                 sendResponse({
                   ...(response || { success: false }),
                   source: source

@@ -102,3 +102,53 @@ export async function hasCustomData(): Promise<boolean> {
     })
   })
 }
+
+/**
+ * Save AI-generated data after first use
+ * This allows users to see and reuse the generated data later
+ */
+export async function saveGeneratedDataAfterUse(
+  data: AutofillData
+): Promise<{ success: boolean }> {
+  return new Promise((resolve) => {
+    // Check if custom data already exists
+    chrome.storage.local.get("autofillData", (res) => {
+      const existingData = res.autofillData as AutofillData | undefined
+      const hasExisting =
+        existingData &&
+        Object.values(existingData).some(
+          (value) => value && value.trim() !== ""
+        )
+
+      // Only save if no custom data exists
+      if (!hasExisting) {
+        // Convert DOB from DD-MM-YYYY to YYYY-MM-DD for date input
+        const dataToSave = { ...data }
+        if (dataToSave.dob && dataToSave.dob.includes("-")) {
+          const parts = dataToSave.dob.split("-")
+          if (parts.length === 3) {
+            const [day, month, year] = parts
+            // Convert to YYYY-MM-DD format for HTML date input
+            dataToSave.dob = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+          }
+        }
+
+        chrome.storage.local.set({ autofillData: dataToSave }, () => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "Error saving generated data:",
+              chrome.runtime.lastError
+            )
+            resolve({ success: false })
+          } else {
+            console.log("💾 AI-generated data saved for future reference")
+            resolve({ success: true })
+          }
+        })
+      } else {
+        console.log("📝 Custom data exists, not overwriting")
+        resolve({ success: false })
+      }
+    })
+  })
+}

@@ -96,7 +96,7 @@ Example format:
 // Cache for generated data to avoid multiple API calls
 let cachedData: DummyUserData | null = null
 let cacheTimestamp: number = 0
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+const CACHE_DURATION = 1 * 60 * 1000 // 5 minutes
 
 export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
   const now = Date.now()
