@@ -13,6 +13,9 @@ export const FillButton = ({
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error" | "noform"
   >("idle")
+  const [dataSource, setDataSource] = useState<"custom" | "generated" | null>(
+    null
+  )
 
   const handleClick = async () => {
     try {
@@ -24,6 +27,7 @@ export const FillButton = ({
       })
       if (response?.success) {
         const total = response.total ?? 0
+        setDataSource(response.source || null)
         if (total === 0) {
           setStatus("noform")
           if (onStatusChange) onStatusChange("idle")
@@ -39,19 +43,22 @@ export const FillButton = ({
         }
       } else {
         setStatus("error")
+        setDataSource(null)
         if (onStatusChange) onStatusChange("error")
         if (onResult) onResult({ filled: 0, total: 0 })
       }
     } catch (error) {
       console.error("Autofill error:", error)
       setStatus("error")
+      setDataSource(null)
       if (onStatusChange) onStatusChange("error")
       if (onResult) onResult({ filled: 0, total: 0 })
     }
     setTimeout(() => {
       setStatus("idle")
+      setDataSource(null)
       if (onStatusChange) onStatusChange("idle")
-    }, 2000)
+    }, 3000)
   }
   return (
     <section id="fill-button plasmo-flex ">
@@ -76,7 +83,11 @@ export const FillButton = ({
             aria-label="filled"
             className="plasmo-text-green-500 plasmo-flex plasmo-items-center plasmo-gap-2">
             <Check className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse" />
-            <span className="plasmo-text-sm plasmo-text-green-600">Filled</span>
+            <span className="plasmo-text-sm plasmo-text-green-600">
+              Filled
+              {dataSource === "generated" && " (AI Generated)"}
+              {dataSource === "custom" && " (Custom Data)"}
+            </span>
           </span>
         )}
         {status === "error" && (
@@ -84,7 +95,9 @@ export const FillButton = ({
             aria-label="error"
             className="plasmo-text-red-500 plasmo-flex plasmo-items-center plasmo-gap-2">
             <X className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse" />
-            <span className="plasmo-text-sm plasmo-text-red-600">No Form Detected</span>
+            <span className="plasmo-text-sm plasmo-text-red-600">
+              No Form Detected
+            </span>
           </span>
         )}
         {status === "noform" && (

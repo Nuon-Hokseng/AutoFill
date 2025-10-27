@@ -4,11 +4,13 @@ import {
   CheckCheck,
   Eye,
   EyeOff,
+  Info,
+  Sparkles,
   Trash,
   Trash2,
   X
 } from "lucide-react"
-import React, { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { useStorage } from "@plasmohq/storage/hook"
 
@@ -16,7 +18,7 @@ const initialFormState = {
   username: "",
   firstname: "",
   lastname: "",
-  gender: "2",
+  gender: "",
   dob: "",
   email: "",
   password: ""
@@ -28,6 +30,15 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
   )
   const [status, setStatus] = useState<React.ReactNode>("")
   const [showValues, setShowValues] = useState(false)
+  const [hasAnyData, setHasAnyData] = useState(false)
+
+  // Check if form has any data
+  useEffect(() => {
+    const hasData = Object.values(form || {}).some(
+      (value) => value && typeof value === "string" && value.trim() !== ""
+    )
+    setHasAnyData(hasData)
+  }, [form])
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -115,6 +126,21 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
             {showValues ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
+
+        {!hasAnyData && (
+          <div className="plasmo-bg-blue-50 plasmo-border plasmo-border-blue-200 plasmo-rounded-lg plasmo-p-3 plasmo-flex plasmo-items-start plasmo-gap-2">
+            <Sparkles className="plasmo-w-5 plasmo-h-5 plasmo-text-blue-600 plasmo-flex-shrink-0 plasmo-mt-0.5" />
+            <div className="plasmo-text-sm plasmo-text-blue-800">
+              <p className="plasmo-font-medium plasmo-mb-1">
+                AI-Generated Data Active
+              </p>
+              <p className="plasmo-text-blue-700">
+                Since no custom data is saved, we'll use AI-generated dummy data
+                for autofill.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="plasmo-space-y-3 plasmo-max-h-80 plasmo-overflow-y-auto">
           {inputFields.map(({ key, label, type }) => {
