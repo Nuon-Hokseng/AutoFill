@@ -1,6 +1,6 @@
 // Gender field detection and filling functionality
-import { FIELD_KEYWORDS } from "./keyword"
-import { getAssociatedLabelText, matchesAny } from "./utils"
+import { FIELD_KEYWORDS } from "../keyword"
+import { getAssociatedLabelText, matchesAny } from "../utils"
 
 const GENDER_KEYWORDS: string[] = ([] as string[]).concat(
   ...Object.values(FIELD_KEYWORDS)
@@ -56,25 +56,25 @@ export function detectGenderFields(): GenderRadios {
       // Fallback: text-based detection only if no numeric values found
       else if (
         !genderRadios.male &&
-        (matchesAny(value, ["male", "m", "man", "Male"]) ||
-          matchesAny(id, ["male", "m", "man", "Male"]) ||
-          matchesAny(labelText, ["male", "m", "man", "Male"]))
+        (matchesAny(value, GENDER_KEYWORDS) ||
+          matchesAny(id, GENDER_KEYWORDS) ||
+          matchesAny(labelText, GENDER_KEYWORDS))
       ) {
         genderRadios.male = radio
         console.log("Found male gender radio with text-based detection")
       } else if (
         !genderRadios.female &&
-        (matchesAny(value, ["female", "f", "woman", "Female"]) ||
-          matchesAny(id, ["female", "f", "woman", "Female"]) ||
-          matchesAny(labelText, ["female", "f", "woman", "Female"]))
+        (matchesAny(value, GENDER_KEYWORDS) ||
+          matchesAny(id, GENDER_KEYWORDS) ||
+          matchesAny(labelText, GENDER_KEYWORDS))
       ) {
         genderRadios.female = radio
         console.log("Found female gender radio with text-based detection")
       } else if (
         !genderRadios.custom &&
-        (matchesAny(value, ["custom", "other", "prefer not to say"]) ||
-          matchesAny(id, ["custom", "other", "prefer"]) ||
-          matchesAny(labelText, ["custom", "other", "prefer not to say"]))
+        (matchesAny(value, GENDER_KEYWORDS) ||
+          matchesAny(id, GENDER_KEYWORDS) ||
+          matchesAny(labelText, GENDER_KEYWORDS))
       ) {
         genderRadios.custom = radio
         console.log("Found custom gender radio with text-based detection")

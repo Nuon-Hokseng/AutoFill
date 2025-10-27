@@ -15,6 +15,9 @@ export type FieldName =
 
 export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
   gender: [
+    "custom",
+    "other",
+    "prefer not to say",
     "gender",
     "sex",
     "gender identity",
@@ -306,6 +309,16 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
     "iso-country"
   ],
   dob: [
+    "year",
+    "birth_year",
+    "dob_year",
+    "date_year",
+    "birth_month",
+    "dob_month",
+    "date_month",
+    "birth_day",
+    "dob_day",
+    "date_day",
     "dob",
     "date of birth",
     "birth date",
