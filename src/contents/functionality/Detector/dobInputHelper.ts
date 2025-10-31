@@ -1,5 +1,5 @@
 import { getAssociatedLabelText, matchesAny } from "../Detector/utils"
-import type { DOBselect } from "../Fill-function/dob"
+import type { DOBselect } from "../filler/dob"
 
 export function triggerInputEvents(el: HTMLInputElement, value: string): void {
   el.focus?.()

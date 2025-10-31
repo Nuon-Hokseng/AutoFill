@@ -1,6 +1,6 @@
 // Shared TypeScript interfaces for autofill functionality
 
-import type { DOBselect } from "./Fill-function/dob"
+import type { DOBselect } from "./filler/dob"
 
 export interface Credentials {
   email?: string

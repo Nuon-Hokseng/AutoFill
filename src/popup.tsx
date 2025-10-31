@@ -10,8 +10,8 @@ import {
 import React = require("react");
 import { useEffect, useState } from "react"
 
-import CustomTab from "~features/custom-tab"
-import { FillButton } from "~features/fill-button"
+import CustomTab from "~components/custom-tab"
+import { FillButton } from "~components/fill-button"
 
 import "~style.css"
 
