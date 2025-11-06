@@ -147,7 +147,12 @@ export default function IndexPopup() {
 
             <div className="space-y-2 pt-4 border-t border-gray-200">
               <button
-                onClick={() => chrome.runtime.openOptionsPage()}
+                onClick={() => {
+                  // This builds the full URL you need, including the hash
+                  const optionsUrl = chrome.runtime.getURL("options.html#/dashboard");
+                  // This opens that specific URL in a new tab
+                  chrome.tabs.create({ url: optionsUrl });
+                }}
                 className="justify-center w-full text-sm py-2 border border-gray-200 rounded flex items-center gap-2">
                 <Globe className="w-4 h-4" />
                 Manage Websites
