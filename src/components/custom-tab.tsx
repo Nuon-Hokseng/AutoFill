@@ -4,19 +4,23 @@ import {
   CheckCheck,
   Eye,
   EyeOff,
+  Info,
+  Sparkles,
   Trash,
   Trash2,
   X
 } from "lucide-react"
-import React, { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { useStorage } from "@plasmohq/storage/hook"
+
+import React = require("react")
 
 const initialFormState = {
   username: "",
   firstname: "",
   lastname: "",
-  gender: "2",
+  gender: "",
   dob: "",
   email: "",
   password: ""
@@ -28,6 +32,50 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
   )
   const [status, setStatus] = useState<React.ReactNode>("")
   const [showValues, setShowValues] = useState(false)
+  const [hasAnyData, setHasAnyData] = useState(false)
+
+  // Load data from Chrome storage when component mounts
+  useEffect(() => {
+    chrome.storage.local.get("autofillData", (res) => {
+      if (res.autofillData) {
+        console.log("📥 Loaded data from storage:", res.autofillData)
+        setForm(res.autofillData)
+      } else {
+        console.log("📭 No data found in storage")
+      }
+    })
+
+    // Listen for storage changes
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName === "local" && changes.autofillData) {
+        console.log(
+          "🔄 Storage changed, reloading data:",
+          changes.autofillData.newValue
+        )
+        if (changes.autofillData.newValue) {
+          setForm(changes.autofillData.newValue)
+        }
+      }
+    }
+
+    chrome.storage.onChanged.addListener(handleStorageChange)
+
+    // Cleanup listener on unmount
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange)
+    }
+  }, [])
+
+  // Check if form has any data
+  useEffect(() => {
+    const hasData = Object.values(form || {}).some(
+      (value) => value && typeof value === "string" && value.trim() !== ""
+    )
+    setHasAnyData(hasData)
+  }, [form])
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -116,7 +164,37 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
           </button>
         </div>
 
-        <div className="space-y-3 max-h-80 overflow-y-auto">
+        {!hasAnyData && (
+          <div className="plasmo-bg-blue-50 plasmo-border plasmo-border-blue-200 plasmo-rounded-lg plasmo-p-3 plasmo-flex plasmo-items-start plasmo-gap-2">
+            <Sparkles className="plasmo-w-5 plasmo-h-5 plasmo-text-blue-600 plasmo-flex-shrink-0 plasmo-mt-0.5" />
+            <div className="plasmo-text-sm plasmo-text-blue-800">
+              <p className="plasmo-font-medium plasmo-mb-1">
+                AI-Generated Data Active
+              </p>
+              <p className="plasmo-text-blue-700">
+                Since no custom data is saved, we'll use AI-generated dummy data
+                for autofill.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {hasAnyData && (
+          <div className="plasmo-bg-green-50 plasmo-border plasmo-border-green-200 plasmo-rounded-lg plasmo-p-3 plasmo-flex plasmo-items-start plasmo-gap-2">
+            <Info className="plasmo-w-5 plasmo-h-5 plasmo-text-green-600 plasmo-flex-shrink-0 plasmo-mt-0.5" />
+            <div className="plasmo-text-sm plasmo-text-green-800">
+              <p className="plasmo-font-medium plasmo-mb-1">
+                Saved Credentials
+              </p>
+              <p className="plasmo-text-green-700">
+                These credentials will be used for autofill. You can edit or
+                remove them anytime.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="plasmo-space-y-3 plasmo-max-h-80 plasmo-overflow-y-auto">
           {inputFields.map(({ key, label, type }) => {
             if (type === "select") {
               return (

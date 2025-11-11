@@ -7,10 +7,11 @@ import {
   User,
   Wand2
 } from "lucide-react"
-import React, { useState } from "react"
+import React = require("react");
+import { useEffect, useState } from "react"
 
-import CustomTab from "~features/custom-tab"
-import { FillButton } from "~features/fill-button"
+import CustomTab from "~components/custom-tab"
+import { FillButton } from "~components/fill-button"
 
 import "~style.css"
 
@@ -21,6 +22,12 @@ export default function IndexPopup() {
   const [filledCount, setFilledCount] = useState<number | null>(null)
   const [totalCount, setTotalCount] = useState<number | null>(null)
   const [isFilling, setIsFilling] = useState(false)
+
+  // Connect to background script to trigger preload
+  useEffect(() => {
+    const port = chrome.runtime.connect({ name: "popup" })
+    return () => port.disconnect()
+  }, [])
 
   if (currentView === "custom") {
     return <CustomTab goBack={() => setCurrentView("main")} />

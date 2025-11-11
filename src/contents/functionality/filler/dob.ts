@@ -1,14 +1,15 @@
-import { FIELD_KEYWORDS } from "./keyword"
-import { getAssociatedLabelText, matchesAny } from "./utils"
+import { FIELD_KEYWORDS } from "../Detector/keyword"
+import { getAssociatedLabelText, matchesAny } from "../Detector/utils"
+import { detectDOBInputs, triggerInputEvents } from "../Detector/dobInputHelper"
 
 const DOB_KEYWORDS: string[] = ([] as string[]).concat(
   ...Object.values(FIELD_KEYWORDS)
 )
 
 export interface DOBselect {
-  day: HTMLSelectElement | null
+  day: HTMLInputElement | HTMLSelectElement | null
   month: HTMLSelectElement | null
-  year: HTMLSelectElement | null
+  year: HTMLInputElement | HTMLSelectElement | null
 }
 
 //trigger event detection to select inputt form
@@ -31,6 +32,8 @@ function triggerSelectEvents(el: HTMLSelectElement, value: string): void {
 
 export function detectDOBFields(): DOBselect {
   const dobselect: DOBselect = { day: null, month: null, year: null }
+
+  // ====== DETECT SELECT INPUTS (existing logic) ======
   const selectInput = Array.from(
     document.querySelectorAll<HTMLSelectElement>("select")
   )
@@ -98,6 +101,10 @@ export function detectDOBFields(): DOBselect {
       }
     }
   }
+
+  // ====== DETECT INPUT FIELDS (NEW LOGIC) ======
+  detectDOBInputs(dobselect, DOB_KEYWORDS)
+
   return dobselect
 }
 
@@ -113,7 +120,11 @@ export async function fillDOB(
   if (dobSelect.day && day) {
     try {
       console.log(`Filling DOB day field with value: ${day}`)
-      triggerSelectEvents(dobSelect.day, day)
+      if (dobSelect.day instanceof HTMLInputElement) {
+        triggerInputEvents(dobSelect.day, day)
+      } else {
+        triggerSelectEvents(dobSelect.day, day)
+      }
       filledSomething = true
     } catch (error) {
       console.error("Error filling DOB day field:", error)
@@ -134,7 +145,11 @@ export async function fillDOB(
   if (dobSelect.year && year) {
     try {
       console.log(`Filling DOB year field with value: ${year}`)
-      triggerSelectEvents(dobSelect.year, year)
+      if (dobSelect.year instanceof HTMLInputElement) {
+        triggerInputEvents(dobSelect.year, year)
+      } else {
+        triggerSelectEvents(dobSelect.year, year)
+      }
       filledSomething = true
     } catch (error) {
       console.error("Error filling DOB year field:", error)
@@ -142,7 +157,7 @@ export async function fillDOB(
   }
 
   if (!filledSomething) {
-    console.warn("No DOB select elements found or dob string is invalid")
+    console.warn("No DOB elements found or dob string is invalid")
   }
 
   return filledSomething

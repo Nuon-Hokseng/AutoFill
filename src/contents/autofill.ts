@@ -10,8 +10,8 @@ import {
   fillPassword,
   fillUsername,
   getAssociatedLabel
-} from "./Function/fill-info"
-import { detectFields } from "./Function/fill-info/fieldDetector"
+} from "./functionality"
+import { detectFields } from "./functionality/Detector/Agorithms"
 
 console.log("Autofill content script loaded")
 
@@ -214,17 +214,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   console.log("Content script received message:", msg)
 
   if (msg?.type === "AUTOFILL_CREDENTIALS") {
-    chrome.storage.local.get("autofillData", (res) => {
-      if (res.autofillData) {
-        console.log("Loaded credentials from storage:", res.autofillData)
-        fillCredentials(res.autofillData).then((result) => {
-          sendResponse({ success: true, ...(result || {}) })
+    // Use data passed from background script (either custom or generated)
+    const data = msg.data
+    const source = msg.source || "unknown"
+
+    if (data) {
+      console.log(`📝 Using ${source} data for autofill:`, data)
+      fillCredentials(data).then((result) => {
+        sendResponse({
+          success: true,
+          source: source,
+          ...(result || {})
         })
-      } else {
-        console.warn("No saved autofill data found!")
-        sendResponse({ success: false, error: "No saved data" })
-      }
-    })
+      })
+    } else {
+      console.warn("No autofill data provided!")
+      sendResponse({ success: false, error: "No data provided", source })
+    }
+
     return true // important for async response
   }
 
