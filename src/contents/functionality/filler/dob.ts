@@ -1,6 +1,6 @@
+import { detectDOBInputs, triggerInputEvents } from "../Detector/dobInputHelper"
 import { FIELD_KEYWORDS } from "../Detector/keyword"
 import { getAssociatedLabelText, matchesAny } from "../Detector/utils"
-import { detectDOBInputs, triggerInputEvents } from "../Detector/dobInputHelper"
 
 const DOB_KEYWORDS: string[] = ([] as string[]).concat(
   ...Object.values(FIELD_KEYWORDS)
@@ -8,7 +8,7 @@ const DOB_KEYWORDS: string[] = ([] as string[]).concat(
 
 export interface DOBselect {
   day: HTMLInputElement | HTMLSelectElement | null
-  month: HTMLSelectElement | null
+  month: HTMLInputElement | HTMLSelectElement | null
   year: HTMLInputElement | HTMLSelectElement | null
 }
 
@@ -134,8 +134,14 @@ export async function fillDOB(
   if (dobSelect.month && month) {
     try {
       const monthValue = String(parseInt(month))
-      console.log(`Filling DOB month field with value: ${month}`)
-      triggerSelectEvents(dobSelect.month, monthValue)
+      console.log(`Filling DOB month field with value: ${monthValue}`)
+
+      // Handle both input and select for month
+      if (dobSelect.month instanceof HTMLInputElement) {
+        triggerInputEvents(dobSelect.month, monthValue)
+      } else {
+        triggerSelectEvents(dobSelect.month, monthValue)
+      }
       filledSomething = true
     } catch (error) {
       console.error("Error filling DOB month field:", error)

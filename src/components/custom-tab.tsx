@@ -5,6 +5,7 @@ import {
   Eye,
   EyeOff,
   Info,
+  RefreshCw,
   Sparkles,
   Trash,
   Trash2,
@@ -12,62 +13,141 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
-import { useStorage } from "@plasmohq/storage/hook"
-
 import React = require("react")
 
 const initialFormState = {
-  username: "",
+  // Basic Info
+  title: "",
   firstname: "",
+  middlename: "",
+  middleinitial: "",
   lastname: "",
+  fullname: "",
+
+  // Account
+  username: "",
+  email: "",
+  password: "",
+  userid: "",
+
+  // Personal
   gender: "",
   dob: "",
-  email: "",
-  password: ""
+  age: "",
+  birthplace: "",
+  ssn: "",
+  driverslicense: "",
+
+  // Company
+  company: "",
+  position: "",
+
+  // Address
+  address1: "",
+  address2: "",
+  city: "",
+  state: "",
+  zipcode: "",
+  postalcode: "",
+  country: "",
+
+  // Contact
+  homephone: "",
+  workphone: "",
+  cellphone: "",
+  fax: "",
+  website: "",
+
+  // Payment
+  creditcardtype: "",
+  creditcardnumber: "",
+  cardverificationcode: "",
+  cardexpiration: "",
+  cardusername: "",
+  cardissuingbank: "",
+  cardcustomerservicephone: "",
+
+  // Other
+  income: "",
+  custommessage: "",
+  comments: ""
 }
 
 export default function CustomTab({ goBack }: { goBack: () => void }) {
-  const [form, setForm] = useStorage("autofillData", (v) =>
-    v === undefined ? initialFormState : v
-  )
+  // Local state for manual input only
+  // Local state for display with DOB conversion
+  const [form, setForm] = useState(initialFormState)
   const [status, setStatus] = useState<React.ReactNode>("")
   const [showValues, setShowValues] = useState(false)
   const [hasAnyData, setHasAnyData] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // Load data from Chrome storage when component mounts
+  // Convert DOB format when rawForm changes (from storage)
   useEffect(() => {
+    if (rawForm) {
+      const displayData = { ...rawForm }
+
+      // Convert DOB from DD-MM-YYYY (storage) to YYYY-MM-DD (date input) if needed
+      if (displayData.dob && displayData.dob.includes("-")) {
+        const parts = displayData.dob.split("-")
+        if (parts.length === 3 && parts[0].length <= 2) {
+          // Format is DD-MM-YYYY from storage, convert to YYYY-MM-DD for input
+          const [day, month, year] = parts
+          displayData.dob = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+          console.log(
+            `📅 Converting DOB for display: ${rawForm.dob} → ${displayData.dob}`
+          )
+        }
+        // If already YYYY-MM-DD, keep as is
+      }
+
+      setForm(displayData)
+      console.log("� Updated display form from storage:", displayData)
+    } else {
+      setForm(initialFormState)
+    }
+  }, [rawForm])
+
+  // Manual refresh function - reload from storage
+  const handleRefresh = () => {
+    setIsRefreshing(true)
     chrome.storage.local.get("autofillData", (res) => {
       if (res.autofillData) {
-        console.log("📥 Loaded data from storage:", res.autofillData)
-        setForm(res.autofillData)
+        const loadedData = { ...res.autofillData }
+
+        // Convert DOB format
+        if (loadedData.dob && loadedData.dob.includes("-")) {
+          const parts = loadedData.dob.split("-")
+          if (parts.length === 3 && parts[0].length <= 2) {
+            const [day, month, year] = parts
+            loadedData.dob = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+          }
+        }
+
+        setForm(loadedData)
+        console.log("🔄 Refreshed custom data from storage")
+        setStatus(
+          <span className="plasmo-flex plasmo-justify-center plasmo-items-center plasmo-gap-2">
+            <CheckCheck className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-green-600" />
+            <span className="plasmo-text-gray-700">Refreshed</span>
+          </span>
+        )
       } else {
         console.log("📭 No data found in storage")
-      }
-    })
-
-    // Listen for storage changes
-    const handleStorageChange = (
-      changes: { [key: string]: chrome.storage.StorageChange },
-      areaName: string
-    ) => {
-      if (areaName === "local" && changes.autofillData) {
-        console.log(
-          "🔄 Storage changed, reloading data:",
-          changes.autofillData.newValue
+        setForm(initialFormState)
+        setStatus(
+          <span className="plasmo-flex plasmo-justify-center plasmo-items-center plasmo-gap-2">
+            <X className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-yellow-600" />
+            <span className="plasmo-text-gray-700">No data found</span>
+          </span>
         )
-        if (changes.autofillData.newValue) {
-          setForm(changes.autofillData.newValue)
-        }
       }
-    }
-
-    chrome.storage.onChanged.addListener(handleStorageChange)
-
-    // Cleanup listener on unmount
-    return () => {
-      chrome.storage.onChanged.removeListener(handleStorageChange)
-    }
-  }, [])
+      setTimeout(() => {
+        setStatus("")
+        setIsRefreshing(false)
+      }, 2000)
+    })
+  }
 
   // Check if form has any data
   useEffect(() => {
@@ -81,6 +161,7 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { id, value } = e.target as HTMLInputElement
+    // Update local state only - no auto-save
     setForm({ ...form, [id]: value })
   }
 
@@ -88,12 +169,23 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
     const { dob, ...rest } = form
     const payload = { ...rest, dob }
 
-    if (dob) {
-      const [year, month, day] = dob.split("-")
-      payload.dob = `${day}-${month}-${year}`
+    // Convert DOB from YYYY-MM-DD (HTML date input) to DD-MM-YYYY for autofill
+    if (dob && dob.includes("-")) {
+      const parts = dob.split("-")
+      if (parts.length === 3 && parts[0].length === 4) {
+        // Format is YYYY-MM-DD from date input
+        const [year, month, day] = parts
+        payload.dob = `${day}-${month}-${year}`
+        console.log(`📅 Converting DOB for save: ${dob} → ${payload.dob}`)
+      } else {
+        // Already in DD-MM-YYYY format
+        payload.dob = dob
+      }
     }
 
+    // Save to storage
     chrome.storage.local.set({ autofillData: payload }, () => {
+      console.log("✅ Custom data saved successfully:", payload)
       setStatus(
         <span className=" plasmo-flex plasmo-justify-center plasmo-items-center plasmo-gap-2 ">
           <CheckCheck className=" plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-green-600" />
@@ -121,6 +213,7 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
       // Remove saved data
       chrome.storage.local.remove("autofillData", () => {
         setForm(initialFormState)
+        console.log("🗑️ Custom data removed successfully")
         setStatus(
           <span className="plasmo-justify-center plasmo-flex plasmo-items-center plasmo-gap-2 ">
             <Trash className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-green-600" />
@@ -132,15 +225,83 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
     })
   }
 
-  const inputFields = [
-    { key: "username", label: "Username", type: "text" },
-    { key: "firstname", label: "First Name", type: "text" },
-    { key: "lastname", label: "Last Name", type: "text" },
-    { key: "gender", label: "Gender", type: "select" },
-    { key: "dob", label: "DOB", type: "date" },
-    { key: "email", label: "Email", type: "email" },
-    { key: "password", label: "Password", type: "password" }
-  ]
+  const inputFieldGroups = {
+    "Basic Info": [
+      {
+        key: "title",
+        label: "Title",
+        type: "select",
+        options: ["", "Mr", "Mrs", "Ms", "Dr", "Prof"]
+      },
+      { key: "firstname", label: "First Name", type: "text" },
+      { key: "middlename", label: "Middle Name", type: "text" },
+      { key: "middleinitial", label: "Middle Initial", type: "text" },
+      { key: "lastname", label: "Last Name", type: "text" },
+      { key: "fullname", label: "Full Name", type: "text" }
+    ],
+    Account: [
+      { key: "username", label: "Username", type: "text" },
+      { key: "email", label: "Email", type: "email" },
+      { key: "password", label: "Password", type: "password" },
+      { key: "userid", label: "User ID", type: "text" }
+    ],
+    Personal: [
+      {
+        key: "gender",
+        label: "Gender",
+        type: "select",
+        options: ["", "1", "2", "-1"]
+      },
+      { key: "dob", label: "Date of Birth", type: "date" },
+      { key: "age", label: "Age", type: "text" },
+      { key: "birthplace", label: "Birth Place", type: "text" },
+      { key: "ssn", label: "SSN", type: "text" },
+      { key: "driverslicense", label: "Driver License", type: "text" }
+    ],
+    Company: [
+      { key: "company", label: "Company", type: "text" },
+      { key: "position", label: "Position", type: "text" }
+    ],
+    Address: [
+      { key: "address1", label: "Address Line 1", type: "text" },
+      { key: "address2", label: "Address Line 2", type: "text" },
+      { key: "city", label: "City", type: "text" },
+      { key: "state", label: "State/Province", type: "text" },
+      { key: "zipcode", label: "Zip Code", type: "text" },
+      { key: "postalcode", label: "Postal Code", type: "text" },
+      { key: "country", label: "Country", type: "text" }
+    ],
+    Contact: [
+      { key: "homephone", label: "Home Phone", type: "tel" },
+      { key: "workphone", label: "Work Phone", type: "tel" },
+      { key: "cellphone", label: "Cell Phone", type: "tel" },
+      { key: "fax", label: "Fax", type: "tel" },
+      { key: "website", label: "Website", type: "url" }
+    ],
+    Payment: [
+      {
+        key: "creditcardtype",
+        label: "Card Type",
+        type: "select",
+        options: ["", "Visa", "Mastercard", "Amex", "Discover"]
+      },
+      { key: "creditcardnumber", label: "Card Number", type: "text" },
+      { key: "cardverificationcode", label: "CVV", type: "text" },
+      { key: "cardexpiration", label: "Expiration (MM/YY)", type: "text" },
+      { key: "cardusername", label: "Name on Card", type: "text" },
+      { key: "cardissuingbank", label: "Issuing Bank", type: "text" },
+      {
+        key: "cardcustomerservicephone",
+        label: "Customer Service",
+        type: "tel"
+      }
+    ],
+    Other: [
+      { key: "income", label: "Income", type: "text" },
+      { key: "custommessage", label: "Custom Message", type: "text" },
+      { key: "comments", label: "Comments", type: "text" }
+    ]
+  }
 
   return (
     <div className="plasmo-w-80 plasmo-bg-white plasmo-rounded-lg plasmo-shadow-2xl plasmo-border plasmo-border-gray-200 plasmo-overflow-hidden">
@@ -156,12 +317,24 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
               Custom Credentials
             </h1>
           </div>
-          <button
-            onClick={() => setShowValues((s) => !s)}
-            className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600"
-            aria-label={showValues ? "Hide values" : "Show values"}>
-            {showValues ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
+          <div className="plasmo-flex plasmo-items-center plasmo-gap-1">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600 hover:plasmo-bg-gray-100"
+              aria-label="Refresh data">
+              <RefreshCw
+                size={16}
+                className={isRefreshing ? "plasmo-animate-spin" : ""}
+              />
+            </button>
+            <button
+              onClick={() => setShowValues((s) => !s)}
+              className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600 hover:plasmo-bg-gray-100"
+              aria-label={showValues ? "Hide values" : "Show values"}>
+              {showValues ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
         </div>
 
         {!hasAnyData && (
@@ -179,7 +352,22 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
           </div>
         )}
 
-        {hasAnyData && (
+        {hasAnyData && form?.comments?.includes("API unavailability") && (
+          <div className="plasmo-bg-yellow-50 plasmo-border plasmo-border-yellow-300 plasmo-rounded-lg plasmo-p-3 plasmo-flex plasmo-items-start plasmo-gap-2">
+            <Info className="plasmo-w-5 plasmo-h-5 plasmo-text-yellow-600 plasmo-flex-shrink-0 plasmo-mt-0.5" />
+            <div className="plasmo-text-sm plasmo-text-yellow-800">
+              <p className="plasmo-font-medium plasmo-mb-1">
+                Local Fallback Data
+              </p>
+              <p className="plasmo-text-yellow-700">
+                This data was generated locally because the AI API quota was
+                exceeded. The data is still randomized and realistic.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {hasAnyData && !form?.comments?.includes("API unavailability") && (
           <div className="plasmo-bg-green-50 plasmo-border plasmo-border-green-200 plasmo-rounded-lg plasmo-p-3 plasmo-flex plasmo-items-start plasmo-gap-2">
             <Info className="plasmo-w-5 plasmo-h-5 plasmo-text-green-600 plasmo-flex-shrink-0 plasmo-mt-0.5" />
             <div className="plasmo-text-sm plasmo-text-green-800">
@@ -194,74 +382,101 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
           </div>
         )}
 
-        <div className="plasmo-space-y-3 plasmo-max-h-80 plasmo-overflow-y-auto">
-          {inputFields.map(({ key, label, type }) => {
-            if (type === "select") {
-              return (
-                <label key={key} htmlFor={key} className="plasmo-block">
-                  <span className="plasmo-block plasmo-text-sm plasmo-text-gray-700 plasmo-mb-1">
-                    {label}
-                  </span>
-                  <select
-                    id={key}
-                    value={form?.[key] || ""}
-                    onChange={handleInputChange}
-                    className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1">
-                    <option value="" disabled>
-                      Select...
-                    </option>
-                    <option value="1">Female</option>
-                    <option value="2">Male</option>
-                    <option value="-1">Custom</option>
-                  </select>
-                </label>
-              )
-            }
+        <div className="plasmo-space-y-3 plasmo-max-h-96 plasmo-overflow-y-auto plasmo-pr-2">
+          {Object.entries(inputFieldGroups).map(([groupName, fields]) => (
+            <div key={groupName} className="plasmo-space-y-2">
+              <h3 className="plasmo-text-xs plasmo-font-semibold plasmo-text-gray-600 plasmo-uppercase plasmo-tracking-wide plasmo-pt-2 plasmo-border-t plasmo-border-gray-200">
+                {groupName}
+              </h3>
+              {fields.map(({ key, label, type, options }: any) => {
+                if (type === "select") {
+                  return (
+                    <label key={key} htmlFor={key} className="plasmo-block">
+                      <span className="plasmo-block plasmo-text-xs plasmo-text-gray-700 plasmo-mb-1">
+                        {label}
+                      </span>
+                      <select
+                        id={key}
+                        value={form?.[key] || ""}
+                        onChange={handleInputChange}
+                        className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1.5 plasmo-text-sm">
+                        {options ? (
+                          options.map((opt: string) => (
+                            <option key={opt} value={opt}>
+                              {opt === ""
+                                ? "Select..."
+                                : key === "gender"
+                                  ? opt === "1"
+                                    ? "Female"
+                                    : opt === "2"
+                                      ? "Male"
+                                      : opt === "-1"
+                                        ? "Custom"
+                                        : opt
+                                  : opt}
+                            </option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="" disabled>
+                              Select...
+                            </option>
+                            <option value="1">Female</option>
+                            <option value="2">Male</option>
+                            <option value="-1">Custom</option>
+                          </>
+                        )}
+                      </select>
+                    </label>
+                  )
+                }
 
-            if (type === "date") {
-              return (
-                <label key={key} htmlFor={key} className="plasmo-block">
-                  <span className="plasmo-block plasmo-text-sm plasmo-text-gray-700 plasmo-mb-1">
-                    {label}
-                  </span>
-                  <input
-                    id={key}
-                    type="date"
-                    max="2010-01-01"
-                    value={form?.[key] || ""}
-                    onChange={handleInputChange as any}
-                    className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1 plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
-                  />
-                </label>
-              )
-            }
+                if (type === "date") {
+                  return (
+                    <label key={key} htmlFor={key} className="plasmo-block">
+                      <span className="plasmo-block plasmo-text-xs plasmo-text-gray-700 plasmo-mb-1">
+                        {label}
+                      </span>
+                      <input
+                        id={key}
+                        type="date"
+                        max="2010-01-01"
+                        value={form?.[key] || ""}
+                        onChange={handleInputChange as any}
+                        className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1.5 plasmo-text-sm plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
+                      />
+                    </label>
+                  )
+                }
 
-            // For non-select/non-date inputs, toggle masking when showValues is false
-            const renderType =
-              type === "date" || type === "select"
-                ? type
-                : showValues
-                  ? type === "password"
-                    ? "text"
-                    : type
-                  : "password"
+                // For non-select/non-date inputs, toggle masking when showValues is false
+                const renderType =
+                  type === "date" || type === "select"
+                    ? type
+                    : showValues
+                      ? type === "password"
+                        ? "text"
+                        : type
+                      : "password"
 
-            return (
-              <label key={key} htmlFor={key} className="plasmo-block">
-                <span className="plasmo-block plasmo-text-sm plasmo-text-gray-700 plasmo-mb-1">
-                  {label}
-                </span>
-                <input
-                  id={key}
-                  type={renderType as any}
-                  placeholder={label}
-                  value={form?.[key] || ""}
-                  onChange={handleInputChange as any}
-                  className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1 plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
-                />
-              </label>
-            )
-          })}
+                return (
+                  <label key={key} htmlFor={key} className="plasmo-block">
+                    <span className="plasmo-block plasmo-text-xs plasmo-text-gray-700 plasmo-mb-1">
+                      {label}
+                    </span>
+                    <input
+                      id={key}
+                      type={renderType as any}
+                      placeholder={label}
+                      value={form?.[key] || ""}
+                      onChange={handleInputChange as any}
+                      className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1.5 plasmo-text-sm plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
+                    />
+                  </label>
+                )
+              })}
+            </div>
+          ))}
         </div>
 
         <div className="plasmo-flex plasmo-gap-2 plasmo-mt-2">

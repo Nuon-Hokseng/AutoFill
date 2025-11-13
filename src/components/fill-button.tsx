@@ -1,6 +1,7 @@
 import { AlertCircle, Check, RefreshCw, Wand2, X } from "lucide-react"
 import { useState } from "react"
-import React = require("react");
+
+import React = require("react")
 
 type FillResult = { filled?: number; total?: number } | null
 
@@ -22,10 +23,12 @@ export const FillButton = ({
     try {
       setStatus("loading")
       if (onStatusChange) onStatusChange("loading")
+
       const response = await chrome.runtime.sendMessage({
         type: "TRIGGER_AUTOFILL",
         action: "fillCredentials"
       })
+
       if (response?.success) {
         const total = response.total ?? 0
         setDataSource(response.source || null)
@@ -42,11 +45,25 @@ export const FillButton = ({
               total: response.total ?? 0
             })
         }
+
+        // Reset status after 3 seconds
+        setTimeout(() => {
+          setStatus("idle")
+          setDataSource(null)
+          if (onStatusChange) onStatusChange("idle")
+        }, 3000)
       } else {
         setStatus("error")
         setDataSource(null)
         if (onStatusChange) onStatusChange("error")
         if (onResult) onResult({ filled: 0, total: 0 })
+
+        // Reset status after 3 seconds
+        setTimeout(() => {
+          setStatus("idle")
+          setDataSource(null)
+          if (onStatusChange) onStatusChange("idle")
+        }, 3000)
       }
     } catch (error) {
       console.error("Autofill error:", error)
@@ -54,12 +71,14 @@ export const FillButton = ({
       setDataSource(null)
       if (onStatusChange) onStatusChange("error")
       if (onResult) onResult({ filled: 0, total: 0 })
+
+      // Reset status after 3 seconds
+      setTimeout(() => {
+        setStatus("idle")
+        setDataSource(null)
+        if (onStatusChange) onStatusChange("idle")
+      }, 3000)
     }
-    setTimeout(() => {
-      setStatus("idle")
-      setDataSource(null)
-      if (onStatusChange) onStatusChange("idle")
-    }, 3000)
   }
   return (
     <section id="fill-button plasmo-flex ">
@@ -86,7 +105,7 @@ export const FillButton = ({
             <Check className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse" />
             <span className="plasmo-text-sm plasmo-text-green-600">
               Filled
-              {dataSource === "generated" && " (AI Generated)"}
+              {dataSource === "generated" && " (Auto Generated)"}
               {dataSource === "custom" && " (Custom Data)"}
             </span>
           </span>

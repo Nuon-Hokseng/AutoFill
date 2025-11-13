@@ -7,13 +7,78 @@ export function matchesAny(str: string | null, keywords: string[]): boolean {
 export function getAssociatedLabelText(
   input: HTMLInputElement | HTMLSelectElement
 ): string {
+  const debug = false // Set to true to debug Apple ID form detection
+
+  // 1. Direct <label for="id"> association
   if (input.id) {
     const label = document.querySelector(`label[for="${input.id}"]`)
-    if (label) return label.textContent || ""
+    if (label) {
+      const text = (label.textContent || "").trim()
+      if (debug)
+        console.log(
+          `[Label Detection] Found label[for="${input.id}"]: "${text}"`
+        )
+      return text
+    }
   }
 
+  // 2. Parent wrapping label <label><input/></label>
   const parentLabel = input.closest("label")
-  if (parentLabel) return parentLabel.textContent || ""
+  if (parentLabel) {
+    const text = (parentLabel.textContent || "").trim()
+    if (debug) console.log(`[Label Detection] Found parent label: "${text}"`)
+    return text
+  }
+
+  // 3. aria-labelledby (can reference multiple ids)
+  const ariaLabelledBy = input.getAttribute("aria-labelledby")
+  if (ariaLabelledBy) {
+    if (debug)
+      console.log(
+        `[Label Detection] Found aria-labelledby="${ariaLabelledBy}" on input:`,
+        input
+      )
+    const texts: string[] = []
+    ariaLabelledBy.split(/\s+/).forEach((id) => {
+      const el = document.getElementById(id)
+      if (el) {
+        const txt = el.textContent || el.getAttribute("aria-label") || ""
+        if (txt) {
+          if (debug)
+            console.log(
+              `  → Resolved label id="${id}" to text: "${txt.trim()}"`
+            )
+          texts.push(txt.trim())
+        }
+      } else {
+        if (debug) console.log(`  → Could not find element with id="${id}"`)
+      }
+    })
+    if (texts.length) {
+      const joined = texts.join(" ")
+      if (debug)
+        console.log(`[Label Detection] Final aria-labelledby text: "${joined}"`)
+      return joined
+    }
+  }
+
+  // 4. aria-describedby (sometimes used instead of label for hints)
+  const ariaDescribedBy = input.getAttribute("aria-describedby")
+  if (ariaDescribedBy) {
+    const texts: string[] = []
+    ariaDescribedBy.split(/\s+/).forEach((id) => {
+      const el = document.getElementById(id)
+      if (el) {
+        const txt = el.textContent || el.getAttribute("aria-label") || ""
+        if (txt) texts.push(txt.trim())
+      }
+    })
+    if (texts.length) return texts.join(" ")
+  }
+
+  // 5. Sibling label within same container (common in custom UI libraries)
+  const siblingLabel = input.parentElement?.querySelector("label")
+  if (siblingLabel) return (siblingLabel.textContent || "").trim()
 
   return ""
 }
@@ -75,21 +140,65 @@ export async function fillFieldWithAnimation(
   value: string
 ): Promise<void> {
   return new Promise((resolve) => {
-    element.value = ""
-    element.focus()
+    console.log(`🔧 Attempting to fill field:`, {
+      name: (element as HTMLInputElement).name,
+      id: element.id,
+      type: (element as HTMLInputElement).type,
+      value: value,
+      currentValue: element.value
+    })
 
-    setTimeout(() => {
+    try {
+      // Focus element first
+      element.focus()
+      element.click()
+
+      // Use native setter for React/Vue compatibility
       const nativeSetter = Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
+        window.HTMLInputElement.prototype,
         "value"
       )?.set
-      nativeSetter?.call(element, value)
 
-      element.setAttribute("value", value)
-      element.dispatchEvent(new Event("input", { bubbles: true }))
-      element.dispatchEvent(new Event("change", { bubbles: true }))
+      // Set the value using native setter
+      if (nativeSetter) {
+        nativeSetter.call(element, value)
+      } else {
+        element.value = value
+      }
+
+      // Trigger focus event
+      element.dispatchEvent(new FocusEvent("focus", { bubbles: true }))
+      element.dispatchEvent(new FocusEvent("focusin", { bubbles: true }))
+
+      // Simulate typing with input event for each character (for strict validation)
+      const inputEvent = new InputEvent("input", {
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+        data: value,
+        inputType: "insertText"
+      })
+      element.dispatchEvent(inputEvent)
+
+      // Trigger change event
+      const changeEvent = new Event("change", { bubbles: true, composed: true })
+      element.dispatchEvent(changeEvent)
+
+      // Trigger keyboard events
+      element.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "Enter" })
+      )
+      element.dispatchEvent(
+        new KeyboardEvent("keyup", { bubbles: true, key: "Enter" })
+      )
+
       element.dispatchEvent(new Event("blur", { bubbles: true }))
       triggerEvents(element)
+
+      console.log(`✅ Field filled successfully:`, {
+        name: (element as HTMLInputElement).name,
+        finalValue: element.value
+      })
 
       const label = getAssociatedLabel(element as HTMLInputElement)
 
@@ -119,6 +228,12 @@ export async function fillFieldWithAnimation(
       }
 
       resolve()
-    }, 10)
+    } catch (error) {
+      console.error(`❌ Error filling field:`, {
+        name: (element as HTMLInputElement).name,
+        error: error
+      })
+      resolve()
+    }
   })
 }

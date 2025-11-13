@@ -1,14 +1,10 @@
 // Background script to show messages between popup and content scripts
 import { hasCachedData, preloadData } from "~services/geminiService"
-import {
-  getAutofillData,
-  hasCustomData,
-  saveGeneratedDataAfterUse
-} from "~services/storageService"
+import { getAIMode, getAutofillData } from "~services/storageService"
 
 console.log("Background script loaded")
 
-// Preload dummy data on extension startup (only if no custom data exists)
+// Preload dummy data on extension startup if AI mode is enabled
 chrome.runtime.onInstalled.addListener(() => {
   console.log("🔧 Extension installed/updated")
   initializePreload()
@@ -22,24 +18,24 @@ chrome.runtime.onStartup.addListener(() => {
 
 // Initialize preload logic
 async function initializePreload() {
-  const customDataExists = await hasCustomData()
+  const aiEnabled = await getAIMode()
 
-  if (!customDataExists && !hasCachedData()) {
-    console.log("🎯 No custom data found, preloading AI-generated data...")
+  if (aiEnabled && !hasCachedData()) {
+    console.log("🎯 AI mode enabled, preloading AI-generated data...")
     preloadData()
-  } else if (customDataExists) {
-    console.log("📝 Custom data exists, skipping preload")
+  } else if (!aiEnabled) {
+    console.log("� AI mode disabled, skipping preload")
   } else {
     console.log("📦 Data already cached")
   }
 }
 
-// Also preload when popup opens (if needed)
+// Also preload when popup opens (if AI mode enabled)
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "popup") {
-    hasCustomData().then((exists) => {
-      if (!exists && !hasCachedData()) {
-        console.log("🎯 Popup opened, ensuring data is preloaded...")
+    getAIMode().then((enabled) => {
+      if (enabled && !hasCachedData()) {
+        console.log("🎯 Popup opened, ensuring AI data is preloaded...")
         preloadData()
       }
     })
@@ -78,26 +74,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               },
               (response) => {
                 console.log("Content script response:", response)
-
-                // If autofill was successful and used generated data, save it for future reference
-                if (response?.success && source === "generated") {
-                  console.log("💾 Attempting to save generated data:", data)
-                  saveGeneratedDataAfterUse(data).then((result) => {
-                    if (result.success) {
-                      console.log(
-                        "✅ Generated data saved to storage for future use"
-                      )
-                      // Verify it was saved
-                      chrome.storage.local.get("autofillData", (res) => {
-                        console.log("✔️ Verified saved data:", res.autofillData)
-                      })
-                    } else {
-                      console.log(
-                        "⚠️ Data was not saved (custom data exists or error)"
-                      )
-                    }
-                  })
-                }
 
                 sendResponse({
                   ...(response || { success: false }),
