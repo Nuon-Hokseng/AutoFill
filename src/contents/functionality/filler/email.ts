@@ -20,7 +20,6 @@ export function detectEmailField(
     const type = (el.getAttribute("type") || "").toLowerCase()
     if (!emailEl && type === "email") {
       emailEl = el
-      console.log("Found email field by type attribute")
       break
     }
   }
@@ -41,7 +40,6 @@ export function detectEmailField(
 
       if (matchesAny(tagStr, EMAIL_KEYWORDS)) {
         emailEl = el
-        console.log("Found email field by attribute matching")
         break
       }
     }
@@ -52,7 +50,6 @@ export function detectEmailField(
     const maybe = inputs.find((el) => el.value?.includes?.("@"))
     if (maybe) {
       emailEl = maybe
-      console.log("Found email field by existing '@' symbol")
     }
   }
 
@@ -66,7 +63,6 @@ export async function fillEmail(
   if (!emailEl || !email) return false
 
   try {
-    console.log("Filling email field")
     await fillFieldWithAnimation(emailEl, email)
     return true
   } catch (error) {

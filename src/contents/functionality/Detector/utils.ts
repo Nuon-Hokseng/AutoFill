@@ -7,17 +7,11 @@ export function matchesAny(str: string | null, keywords: string[]): boolean {
 export function getAssociatedLabelText(
   input: HTMLInputElement | HTMLSelectElement
 ): string {
-  const debug = false // Set to true to debug Apple ID form detection
-
   // 1. Direct <label for="id"> association
   if (input.id) {
     const label = document.querySelector(`label[for="${input.id}"]`)
     if (label) {
       const text = (label.textContent || "").trim()
-      if (debug)
-        console.log(
-          `[Label Detection] Found label[for="${input.id}"]: "${text}"`
-        )
       return text
     }
   }
@@ -26,38 +20,24 @@ export function getAssociatedLabelText(
   const parentLabel = input.closest("label")
   if (parentLabel) {
     const text = (parentLabel.textContent || "").trim()
-    if (debug) console.log(`[Label Detection] Found parent label: "${text}"`)
     return text
   }
 
   // 3. aria-labelledby (can reference multiple ids)
   const ariaLabelledBy = input.getAttribute("aria-labelledby")
   if (ariaLabelledBy) {
-    if (debug)
-      console.log(
-        `[Label Detection] Found aria-labelledby="${ariaLabelledBy}" on input:`,
-        input
-      )
     const texts: string[] = []
     ariaLabelledBy.split(/\s+/).forEach((id) => {
       const el = document.getElementById(id)
       if (el) {
         const txt = el.textContent || el.getAttribute("aria-label") || ""
         if (txt) {
-          if (debug)
-            console.log(
-              `  → Resolved label id="${id}" to text: "${txt.trim()}"`
-            )
           texts.push(txt.trim())
         }
-      } else {
-        if (debug) console.log(`  → Could not find element with id="${id}"`)
       }
     })
     if (texts.length) {
       const joined = texts.join(" ")
-      if (debug)
-        console.log(`[Label Detection] Final aria-labelledby text: "${joined}"`)
       return joined
     }
   }
@@ -140,14 +120,6 @@ export async function fillFieldWithAnimation(
   value: string
 ): Promise<void> {
   return new Promise((resolve) => {
-    console.log(`🔧 Attempting to fill field:`, {
-      name: (element as HTMLInputElement).name,
-      id: element.id,
-      type: (element as HTMLInputElement).type,
-      value: value,
-      currentValue: element.value
-    })
-
     try {
       // Focus element first
       element.focus()
@@ -195,11 +167,6 @@ export async function fillFieldWithAnimation(
       element.dispatchEvent(new Event("blur", { bubbles: true }))
       triggerEvents(element)
 
-      console.log(`✅ Field filled successfully:`, {
-        name: (element as HTMLInputElement).name,
-        finalValue: element.value
-      })
-
       const label = getAssociatedLabel(element as HTMLInputElement)
 
       if (label) {
@@ -229,10 +196,10 @@ export async function fillFieldWithAnimation(
 
       resolve()
     } catch (error) {
-      console.error(`❌ Error filling field:`, {
-        name: (element as HTMLInputElement).name,
-        error: error
-      })
+      console.error(
+        `❌ Error filling field "${(element as HTMLInputElement).name}":`,
+        error instanceof Error ? error.message : String(error)
+      )
       resolve()
     }
   })

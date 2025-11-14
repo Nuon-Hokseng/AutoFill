@@ -4,6 +4,9 @@ import { getAIMode, getAutofillData } from "~services/storageService"
 
 console.log("Background script loaded")
 
+// Initialize preload immediately when background script loads
+initializePreload()
+
 // Preload dummy data on extension startup if AI mode is enabled
 chrome.runtime.onInstalled.addListener(() => {
   console.log("🔧 Extension installed/updated")
@@ -19,21 +22,23 @@ chrome.runtime.onStartup.addListener(() => {
 // Initialize preload logic
 async function initializePreload() {
   const aiEnabled = await getAIMode()
+  const hasCache = await hasCachedData()
 
-  if (aiEnabled && !hasCachedData()) {
+  if (aiEnabled && !hasCache) {
     console.log("🎯 AI mode enabled, preloading AI-generated data...")
     preloadData()
   } else if (!aiEnabled) {
-    console.log("� AI mode disabled, skipping preload")
+    console.log("🚫 AI mode disabled, skipping preload")
   } else {
     console.log("📦 Data already cached")
   }
 }
 
 // Check cache status when popup opens but don't preload (will load on-demand)
-chrome.runtime.onConnect.addListener((port) => {
+chrome.runtime.onConnect.addListener(async (port) => {
   if (port.name === "popup") {
-    if (hasCachedData()) {
+    const hasCache = await hasCachedData()
+    if (hasCache) {
       console.log("📦 Popup opened - data already cached")
     } else {
       console.log("📭 Popup opened - data will be generated on first use")

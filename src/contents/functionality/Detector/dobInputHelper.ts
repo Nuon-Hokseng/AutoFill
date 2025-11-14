@@ -107,13 +107,10 @@ export function detectDOBInputs(dobselect: DOBselect, keywords: string[]) {
 
       if (!dobselect.day && matchesAny(combinedText, dayKeywords)) {
         dobselect.day = input
-        console.log(`Found day DOB input: name="${name}" id="${id}"`)
       } else if (!dobselect.month && matchesAny(combinedText, monthKeywords)) {
         dobselect.month = input as any // Allow input for month field
-        console.log(`Found month DOB input: name="${name}" id="${id}"`)
       } else if (!dobselect.year && matchesAny(combinedText, yearKeywords)) {
         dobselect.year = input
-        console.log(`Found year DOB input: name="${name}" id="${id}"`)
       }
     }
   }

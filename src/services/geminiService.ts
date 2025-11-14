@@ -77,7 +77,13 @@ export interface DummyUserData {
   comments?: string
 }
 
-export async function generateDummyData(): Promise<DummyUserData | null> {
+// Helper function to delay/wait
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// Single generation function with retry logic
+export async function generateDummyData(
+  retryCount: number = 0
+): Promise<DummyUserData | null> {
   const genAI = getGeminiClient()
 
   if (!genAI) {
@@ -191,115 +197,286 @@ Example format:
 }
 `
 
-  try {
-    // Use gemini-1.5-flash for production with Pro plan support
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" })
-    const response = await model.generateContent(prompt)
-    let content = await response.response.text()
+  // Try multiple models with retry logic
+  const models = ["gemini-2.5-pro", "gemini-1.5-flash", "gemini-1.5-pro"]
+  const maxRetries = 2
 
-    // Clean up the response - remove markdown code blocks if present
-    content = content.replace(/```json\s*|\s*```/g, "").trim()
+  for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
+    const modelName = models[modelIndex]
 
-    const data = JSON.parse(content) as DummyUserData
+    try {
+      console.log(`🔄 Attempting to generate data using ${modelName}...`)
+      const model = genAI.getGenerativeModel({ model: modelName })
+      const response = await model.generateContent(prompt)
+      let content = await response.response.text()
 
-    // Validate the data structure - only check required fields
-    if (
-      !data.username ||
-      !data.email ||
-      !data.password ||
-      !data.firstname ||
-      !data.lastname ||
-      !data.dob ||
-      !data.gender
-    ) {
-      console.error("Generated data is missing required fields:", data)
-      return null
+      // Clean up the response - remove markdown code blocks if present
+      content = content.replace(/```json\s*|\s*```/g, "").trim()
+
+      const data = JSON.parse(content) as DummyUserData
+
+      // Validate the data structure - only check required fields
+      if (
+        !data.username ||
+        !data.email ||
+        !data.password ||
+        !data.firstname ||
+        !data.lastname ||
+        !data.dob ||
+        !data.gender
+      ) {
+        console.error("Generated data is missing required fields:", data)
+        continue // Try next model
+      }
+
+      console.log(`✅ Successfully generated dummy data via ${modelName}`)
+      return data
+    } catch (error: any) {
+      const errorMsg = error?.message || String(error)
+      console.error(`❌ Error with ${modelName}:`, errorMsg)
+
+      // Check if it's a 503 overload or 429 quota error
+      if (
+        errorMsg.includes("503") ||
+        errorMsg.includes("overloaded") ||
+        errorMsg.includes("429") ||
+        errorMsg.includes("quota")
+      ) {
+        console.warn(`⚠️ ${modelName} is temporarily unavailable`)
+
+        // If this is the last model, try retry with exponential backoff
+        if (modelIndex === models.length - 1 && retryCount < maxRetries) {
+          const waitTime = Math.pow(2, retryCount) * 2000 // 2s, 4s, 8s
+          console.log(
+            `⏳ Retry ${retryCount + 1}/${maxRetries} after ${waitTime}ms...`
+          )
+          await delay(waitTime)
+          return generateDummyData(retryCount + 1)
+        }
+
+        // Otherwise, try the next model (fallback)
+        if (modelIndex < models.length - 1) {
+          console.log(`🔄 Falling back to ${models[modelIndex + 1]}...`)
+          await delay(1000) // Brief delay before trying next model
+          continue
+        }
+      }
+
+      // For other errors on last model, just fail
+      if (modelIndex === models.length - 1) {
+        console.error("❌ All models failed to generate data")
+        return null
+      }
     }
-
-    console.log("✅ Successfully generated dummy data via Gemini API")
-    return data
-  } catch (error) {
-    console.error("Error generating dummy data with Gemini:", error)
-    if (error instanceof Error) {
-      console.error("Error message:", error.message)
-      console.error("Error stack:", error.stack)
-    }
-    return null
   }
+
+  return null
 }
 
-// Cache for generated data to avoid multiple API calls
+// Simple cache system with single entry and 10 minute auto-refresh
 let cachedData: DummyUserData | null = null
 let cacheTimestamp: number = 0
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes to reduce API calls
-
-// Track if generation is in progress to prevent concurrent calls
+const CACHE_REFRESH_DURATION = 1 * 60 * 1000 // 10 minutes
+let refreshTimer: NodeJS.Timeout | null = null
 let isGenerating = false
-let generationPromise: Promise<DummyUserData | null> | null = null
 
-export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
-  const now = Date.now()
+// Initialize cache with single entry (with retries)
+async function initializeCache(attemptNumber: number = 1): Promise<void> {
+  const maxAttempts = 3
 
-  // Return cached data if it's still valid
-  if (cachedData && now - cacheTimestamp < CACHE_DURATION) {
-    console.log(
-      "📦 Using cached dummy data (age: " +
-        Math.floor((now - cacheTimestamp) / 1000) +
-        "s)"
-    )
-    return cachedData
+  if (isGenerating) {
+    console.log("⏳ Generation already in progress...")
+    return
   }
 
-  // If already generating, wait for that to complete
-  if (isGenerating && generationPromise) {
-    console.log("⏳ Generation already in progress, waiting...")
-    return generationPromise
-  }
-
-  // Generate new data from Gemini API only
   isGenerating = true
-  generationPromise = generateDummyData()
+  console.log(
+    `🔄 Generating single dummy data entry (attempt ${attemptNumber}/${maxAttempts})...`
+  )
 
   try {
-    const newData = await generationPromise
+    const newData = await generateDummyData()
 
     if (newData) {
       cachedData = newData
       cacheTimestamp = Date.now()
-      console.log("✅ New data cached successfully")
-    }
 
-    return newData
+      // Save to chrome storage for persistence
+      chrome.storage.local.set(
+        {
+          generatedData: newData,
+          generatedDataTimestamp: cacheTimestamp
+        },
+        () => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "Error saving generated data to storage:",
+              chrome.runtime.lastError
+            )
+          }
+        }
+      )
+
+      console.log("✅ Data cached and ready for instant use!")
+
+      // Schedule auto-refresh after 10 minutes
+      scheduleCacheRefresh()
+    } else {
+      console.error(`❌ Failed to generate data on attempt ${attemptNumber}`)
+
+      // Retry if we haven't exceeded max attempts
+      if (attemptNumber < maxAttempts) {
+        isGenerating = false
+        const retryDelay = attemptNumber * 3000 // 3s, 6s, 9s
+        console.log(`⏳ Retrying cache initialization in ${retryDelay}ms...`)
+        await delay(retryDelay)
+        return initializeCache(attemptNumber + 1)
+      } else {
+        console.error("❌ All cache initialization attempts failed")
+      }
+    }
+  } catch (error) {
+    console.error("Error generating cached data:", error)
+
+    // Retry if we haven't exceeded max attempts
+    if (attemptNumber < maxAttempts) {
+      isGenerating = false
+      const retryDelay = attemptNumber * 3000
+      console.log(`⏳ Retrying after error in ${retryDelay}ms...`)
+      await delay(retryDelay)
+      return initializeCache(attemptNumber + 1)
+    }
   } finally {
     isGenerating = false
-    generationPromise = null
   }
 }
 
-// Preload data into cache without waiting
-export function preloadData(): void {
-  console.log("🚀 Preloading dummy data in background...")
-  generateDummyData()
-    .then((data) => {
-      if (data) {
-        cachedData = data
-        cacheTimestamp = Date.now()
-        console.log("✅ Dummy data preloaded and ready!")
+// Schedule automatic cache refresh
+function scheduleCacheRefresh(): void {
+  // Clear existing timer if any
+  if (refreshTimer) {
+    clearTimeout(refreshTimer)
+  }
+
+  refreshTimer = setTimeout(() => {
+    console.log("🔄 Auto-refreshing cached data after 10 minutes...")
+    initializeCache()
+  }, CACHE_REFRESH_DURATION)
+
+  console.log("⏰ Cache auto-refresh scheduled for 10 minutes from now")
+}
+
+// Get cached data (instant, no waiting!)
+export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
+  const now = Date.now()
+
+  // Try to load from storage if memory cache is empty
+  if (!cachedData) {
+    const stored = await new Promise<{
+      generatedData?: DummyUserData
+      generatedDataTimestamp?: number
+    }>((resolve) => {
+      chrome.storage.local.get(
+        ["generatedData", "generatedDataTimestamp"],
+        (res) => {
+          resolve(res)
+        }
+      )
+    })
+
+    if (stored.generatedData && stored.generatedDataTimestamp) {
+      const storedAge = now - stored.generatedDataTimestamp
+      if (storedAge < CACHE_REFRESH_DURATION) {
+        cachedData = stored.generatedData
+        cacheTimestamp = stored.generatedDataTimestamp
+        scheduleCacheRefresh()
+        console.log(
+          `✅ Restored cached data from storage (age: ${Math.floor(storedAge / 1000)}s)`
+        )
       }
-    })
-    .catch((error) => {
-      console.error("Error preloading dummy data:", error)
-    })
+    }
+  }
+
+  // Check if cache needs initialization or refresh
+  if (!cachedData || now - cacheTimestamp > CACHE_REFRESH_DURATION) {
+    console.log("🔄 Cache empty or expired, initializing...")
+    await initializeCache()
+  }
+
+  // If still no data after initialization attempt, return null
+  if (!cachedData) {
+    console.error("❌ No cached data available")
+    return null
+  }
+
+  const cacheAge = Math.floor((now - cacheTimestamp) / 1000)
+  console.log(`⚡ Instantly serving cached data (age: ${cacheAge}s)`)
+
+  return cachedData
+}
+
+// Preload single data entry on extension startup
+export function preloadData(): void {
+  console.log("🚀 Preloading single data entry in background...")
+  initializeCache().catch((error) => {
+    console.error("Error preloading cache:", error)
+  })
 }
 
 // Check if cache has valid data
-export function hasCachedData(): boolean {
+export async function hasCachedData(): Promise<boolean> {
   const now = Date.now()
-  return cachedData !== null && now - cacheTimestamp < CACHE_DURATION
+
+  // Check memory cache first
+  if (cachedData !== null && now - cacheTimestamp < CACHE_REFRESH_DURATION) {
+    return true
+  }
+
+  // Check storage
+  return new Promise((resolve) => {
+    chrome.storage.local.get(
+      ["generatedData", "generatedDataTimestamp"],
+      (res) => {
+        if (res.generatedData && res.generatedDataTimestamp) {
+          const storedAge = now - res.generatedDataTimestamp
+          resolve(storedAge < CACHE_REFRESH_DURATION)
+        } else {
+          resolve(false)
+        }
+      }
+    )
+  })
 }
 
-// Force refresh the cached data
-export function clearCache() {
+// Force refresh the cache
+export function clearCache(): void {
   cachedData = null
   cacheTimestamp = 0
+  if (refreshTimer) {
+    clearTimeout(refreshTimer)
+    refreshTimer = null
+  }
+
+  // Clear from storage as well
+  chrome.storage.local.remove(
+    ["generatedData", "generatedDataTimestamp"],
+    () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error clearing storage:", chrome.runtime.lastError)
+      }
+    }
+  )
+
+  console.log("🗑️ Cache cleared")
+}
+
+// Get cache status for debugging
+export function getCacheStatus(): {
+  hasData: boolean
+  age: number
+} {
+  return {
+    hasData: cachedData !== null,
+    age: Date.now() - cacheTimestamp
+  }
 }

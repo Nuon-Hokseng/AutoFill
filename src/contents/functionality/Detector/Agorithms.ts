@@ -107,18 +107,6 @@ export function detectFields(
         ""
     )
 
-    if (
-      debug &&
-      (labelText || placeholderText || castInput.name || castInput.id)
-    ) {
-      console.log(`[Field Detection] Processing input:`, {
-        name: castInput.name,
-        id: castInput.id,
-        type: (castInput as HTMLInputElement).type,
-        labelText,
-        placeholderText
-      })
-    }
     // Helper to split camelCase into space-separated words
     const splitCamelCase = (str: string | null | undefined) => {
       if (!str) return ""
@@ -176,14 +164,6 @@ export function detectFields(
 
     if (debug) {
       // Show top 3 scoring fields for this input
-      const topScores = Object.entries(scores)
-        .filter(([_, score]) => score > 0)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 3)
-        .map(([field, score]) => `${field}=${score}`)
-      if (topScores.length > 0) {
-        console.log(`  → Top matches: ${topScores.join(", ")}`)
-      }
     }
   }
 
@@ -205,12 +185,6 @@ export function detectFields(
     }
     // only assign if we have some confidence based on score
     finalFields[field] = bestScore > 0 ? (bestInput as any) : null
-
-    if (debug && bestScore > 0) {
-      console.log(
-        `[Final Selection] ${field}: score=${bestScore}, name="${(bestInput as HTMLInputElement)?.name}", id="${(bestInput as HTMLInputElement)?.id}"`
-      )
-    }
   }
 
   return finalFields

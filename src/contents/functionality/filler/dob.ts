@@ -52,13 +52,10 @@ export function detectDOBFields(): DOBselect {
       // Priority check: Use numeric values first (most reliable)
       if (value === "1" && name.toLowerCase().includes("day")) {
         dobselect.day = select
-        console.log("Found day DOB select with value 1")
       } else if (value === "1" && name.toLowerCase().includes("month")) {
         dobselect.month = select
-        console.log("Found month DOB select with value 1")
       } else if (value === "1" && name.toLowerCase().includes("year")) {
         dobselect.year = select
-        console.log("Found year DOB select with value 1")
       } else if (
         !dobselect.day &&
         (matchesAny(value, ["day", "birth_day", "dob_day", "date_day"]) ||
@@ -66,7 +63,6 @@ export function detectDOBFields(): DOBselect {
           matchesAny(labelText, ["day", "birth day", "date of birth day"]))
       ) {
         dobselect.day = select
-        console.log("Found day select with text-based detection")
       } else if (
         !dobselect.month &&
         (matchesAny(value, [
@@ -84,7 +80,6 @@ export function detectDOBFields(): DOBselect {
           ]))
       ) {
         dobselect.month = select
-        console.log("Found month select with text-based detection")
       } else if (
         !dobselect.year &&
         (matchesAny(value, ["year", "birth_year", "dob_year", "date_year"]) ||
@@ -97,7 +92,6 @@ export function detectDOBFields(): DOBselect {
           ]))
       ) {
         dobselect.year = select
-        console.log("Found year select with text-based detection")
       }
     }
   }
@@ -119,7 +113,6 @@ export async function fillDOB(
   let filledSomething = false
   if (dobSelect.day && day) {
     try {
-      console.log(`Filling DOB day field with value: ${day}`)
       if (dobSelect.day instanceof HTMLInputElement) {
         triggerInputEvents(dobSelect.day, day)
       } else {
@@ -134,7 +127,6 @@ export async function fillDOB(
   if (dobSelect.month && month) {
     try {
       const monthValue = String(parseInt(month))
-      console.log(`Filling DOB month field with value: ${monthValue}`)
 
       // Handle both input and select for month
       if (dobSelect.month instanceof HTMLInputElement) {
@@ -150,7 +142,6 @@ export async function fillDOB(
 
   if (dobSelect.year && year) {
     try {
-      console.log(`Filling DOB year field with value: ${year}`)
       if (dobSelect.year instanceof HTMLInputElement) {
         triggerInputEvents(dobSelect.year, year)
       } else {
@@ -160,10 +151,6 @@ export async function fillDOB(
     } catch (error) {
       console.error("Error filling DOB year field:", error)
     }
-  }
-
-  if (!filledSomething) {
-    console.warn("No DOB elements found or dob string is invalid")
   }
 
   return filledSomething

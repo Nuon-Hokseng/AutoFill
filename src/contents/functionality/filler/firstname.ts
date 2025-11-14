@@ -40,7 +40,6 @@ export function detectFirstNameField(
       /firstName|givenName/.test(tagStr)
     ) {
       firstnameEl = el
-      console.log("Found first name field by attribute matching")
       break
     }
   }
@@ -55,7 +54,6 @@ export async function fillFirstName(
   if (!firstnameEl || !firstname) return false
 
   try {
-    console.log("Filling first name field")
     await fillFieldWithAnimation(firstnameEl, firstname)
     return true
   } catch (error) {

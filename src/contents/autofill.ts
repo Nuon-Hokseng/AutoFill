@@ -56,8 +56,6 @@ export const config: PlasmoCSConfig = {
   run_at: "document_end"
 }
 
-console.log("🎯 Autofill content script loaded on:", window.location.href)
-
 // Main detection function that finds all credential fields
 // Recursively collect inputs across shadow roots
 function collectInputsDeep(
@@ -75,35 +73,6 @@ function collectInputsDeep(
       nodes.push(...collectInputsDeep(anyEl.shadowRoot))
     }
   })
-  console.log(
-    `🔍 Collected ${nodes.length} total input/select elements (including shadow DOM)`
-  )
-
-  // Debug: Log first few inputs to see what we're dealing with
-  if (nodes.length > 0 && nodes.length <= 20) {
-    console.log(
-      "📝 All inputs found:",
-      nodes.map((n) => ({
-        tag: n.tagName,
-        type: (n as HTMLInputElement).type,
-        name: (n as HTMLInputElement).name,
-        id: n.id,
-        ariaLabelledBy: n.getAttribute("aria-labelledby"),
-        visible: (n as HTMLElement).offsetParent !== null
-      }))
-    )
-  } else if (nodes.length > 20) {
-    console.log(
-      "📝 First 10 inputs:",
-      nodes.slice(0, 10).map((n) => ({
-        tag: n.tagName,
-        type: (n as HTMLInputElement).type,
-        name: (n as HTMLInputElement).name,
-        id: n.id,
-        ariaLabelledBy: n.getAttribute("aria-labelledby")
-      }))
-    )
-  }
 
   return nodes
 }
@@ -124,8 +93,6 @@ function detectCredentialFields() {
   const passwordEl =
     passwordInputs[0] || (scored.password as HTMLInputElement | null)
   const confirmPasswordEl = passwordInputs[1] || null
-
-  console.log(`🔐 Found ${passwordInputs.length} password fields`)
 
   const firstnameEl = scored.firstname as HTMLInputElement | null
   const lastnameEl = scored.lastname as HTMLInputElement | null
@@ -294,13 +261,6 @@ async function fillCredentials(credentials: {
   comments?: string
 }) {
   try {
-    console.log("🚀 Starting autofill process with credentials:", {
-      hasFirstname: !!credentials.firstname,
-      hasLastname: !!credentials.lastname,
-      hasEmail: !!credentials.email,
-      hasCountry: !!credentials.country
-    })
-
     // Prefer a fresh detection pass (throttled) if available, otherwise fallback
     const detection = ensureFreshDetection() || detectCredentialFields()
 
@@ -340,76 +300,6 @@ async function fillCredentials(credentials: {
       incomeEl,
       commentsEl
     } = detection
-
-    console.log("📋 Detected fields:", {
-      email: emailEl
-        ? `${emailEl.tagName}[${emailEl.type || "text"}] name="${emailEl.name}" id="${emailEl.id}"`
-        : "❌ NOT FOUND",
-      username: usernameEl
-        ? `${usernameEl.tagName}[${usernameEl.type || "text"}] name="${usernameEl.name}" id="${usernameEl.id}"`
-        : "❌ NOT FOUND",
-      password: passwordEl
-        ? `${passwordEl.tagName}[${passwordEl.type || "text"}] name="${passwordEl.name}" id="${passwordEl.id}"`
-        : "❌ NOT FOUND",
-      confirmPassword: confirmPasswordEl
-        ? `${confirmPasswordEl.tagName}[${confirmPasswordEl.type || "text"}] name="${confirmPasswordEl.name}" id="${confirmPasswordEl.id}"`
-        : "❌ NOT FOUND",
-      firstname: firstnameEL
-        ? `${firstnameEL.tagName}[${firstnameEL.type || "text"}] name="${firstnameEL.name}" id="${firstnameEL.id}"`
-        : "❌ NOT FOUND",
-      lastname: lastnameEL
-        ? `${lastnameEL.tagName}[${lastnameEL.type || "text"}] name="${lastnameEL.name}" id="${lastnameEL.id}"`
-        : "❌ NOT FOUND",
-      genderMale: genderRadios?.male
-        ? `Found male radio (value: ${genderRadios.male.value})`
-        : null,
-      genderFemale: genderRadios?.female
-        ? `Found female radio (value: ${genderRadios.female.value})`
-        : null,
-      genderCustom: genderRadios?.custom
-        ? `Found custom radio (value: ${genderRadios.custom.value})`
-        : null,
-      dobDay: dobSelect?.day ? "Found day select" : null,
-      dobMonth: dobSelect?.month ? "Found month select" : null,
-      dobYear: dobSelect?.year ? "Found year select" : null,
-      // Log new fields
-      title: titleEl ? "Found title" : null,
-      middlename: middlenameEl ? "Found middle name" : null,
-      fullname: fullnameEl ? "Found full name" : null,
-      company: companyEl ? "Found company" : null,
-      position: positionEl ? "Found position" : null,
-      address1: address1El ? "Found address line 1" : null,
-      address2: address2El ? "Found address line 2" : null,
-      city: cityEl
-        ? `Found city: name="${(cityEl as HTMLInputElement).name}" id="${cityEl.id}"`
-        : "❌ NOT FOUND",
-      state: stateEl
-        ? `Found state: name="${(stateEl as HTMLInputElement).name}" id="${stateEl.id}"`
-        : "❌ NOT FOUND",
-      zipcode: zipcodeEl
-        ? `Found zipcode: name="${(zipcodeEl as HTMLInputElement).name}" id="${zipcodeEl.id}"`
-        : "❌ NOT FOUND",
-      country: countryEl
-        ? `Found country: name="${(countryEl as HTMLInputElement).name}" id="${countryEl.id}" tagName="${countryEl.tagName}"`
-        : "❌ NOT FOUND",
-      phone: phoneEl
-        ? `Found phone: name="${phoneEl.name}" id="${phoneEl.id}"`
-        : "❌ NOT FOUND",
-      homephone: homephoneEl ? "Found home phone" : null,
-      workphone: workphoneEl ? "Found work phone" : null,
-      fax: faxEl ? "Found fax" : null,
-      cellphone: cellphoneEl ? "Found cell phone" : null,
-      website: websiteEl ? "Found website" : null,
-      creditcard: creditcardnumberEl ? "Found credit card" : null,
-      cvv: cvvEl ? "Found CVV" : null,
-      cardexpiration: cardexpirationEl ? "Found card expiration" : null,
-      ssn: ssnEl ? "Found SSN" : null,
-      driverslicense: driverslicenseEl ? "Found driver license" : null,
-      age: ageEl ? "Found age" : null,
-      birthplace: birthplaceEl ? "Found birth place" : null,
-      income: incomeEl ? "Found income" : null,
-      comments: commentsEl ? "Found comments" : null
-    })
 
     let fieldsCount = 0
 
@@ -499,7 +389,6 @@ async function fillCredentials(credentials: {
       )
       if (success) {
         fieldsCount++
-        console.log("✅ Filled confirm password field")
       }
     }
 
@@ -563,7 +452,6 @@ async function fillCredentials(credentials: {
       const success = await fillPhoneField(phoneEl, phoneValue)
       if (success) {
         fieldsCount++
-        console.log("✅ Filled generic phone field")
       }
     }
 
@@ -661,15 +549,7 @@ async function fillCredentials(credentials: {
           label.classList.add("active", "filled", "shrink", "float")
         }
       })
-
-      console.log(
-        `Successfully filled ${fieldsCount} fields with proper label animations`
-      )
     }, 200)
-
-    if (fieldsCount === 0) {
-      console.warn("No fields were found to fill!")
-    }
 
     return { filled: fieldsCount, total: totalDetected }
   } catch (error) {
@@ -683,29 +563,21 @@ async function waitForElements(maxWait = 5000): Promise<boolean> {
   while (Date.now() - startTime < maxWait) {
     const inputs = document.querySelectorAll("input, select, textarea")
     if (inputs.length > 0) {
-      console.log(
-        `✅ Found ${inputs.length} form elements after ${Date.now() - startTime}ms`
-      )
       return true
     }
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
-  console.warn("⏱️ Timeout waiting for form elements")
   return false
 }
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  console.log("Content script received message:", msg)
-
   if (msg?.type === "AUTOFILL_CREDENTIALS") {
     // Use data passed from background script (either custom or generated)
     const data = msg.data
     const source = msg.source || "unknown"
 
     if (data) {
-      console.log(`📝 Using ${source} data for autofill:`, data)
-
       // Wait for form to be ready if needed
       waitForElements(3000).then(() => {
         // Small additional delay for any animations/transitions
@@ -717,11 +589,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               ...(result || {})
             })
           })
-        }, 500)
+        }, 200)
       })
     } else {
-      console.warn("No autofill data provided!")
-      sendResponse({ success: false, error: "No data provided", source })
+      sendResponse({ success: false, error: "No data" })
     }
 
     return true // important for async response

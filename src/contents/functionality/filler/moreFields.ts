@@ -369,19 +369,9 @@ export async function genericFill(
 ): Promise<boolean> {
   if (!el) return false
   try {
-    console.log(`🎯 genericFill called for:`, {
-      tagName: el.tagName,
-      name: (el as HTMLInputElement).name,
-      id: el.id,
-      value: value
-    })
-
     // Handle select elements specially
     if (el.tagName === "SELECT") {
       const selectEl = el as HTMLSelectElement
-      console.log(
-        `🔽 Handling SELECT element with ${selectEl.options.length} options`
-      )
 
       // Try exact match first
       for (let i = 0; i < selectEl.options.length; i++) {
@@ -392,9 +382,6 @@ export async function genericFill(
         ) {
           selectEl.selectedIndex = i
           selectEl.value = option.value
-          console.log(
-            `✅ Selected option: "${option.text}" (value="${option.value}")`
-          )
 
           // Trigger events for frameworks
           selectEl.dispatchEvent(
@@ -416,9 +403,6 @@ export async function genericFill(
         ) {
           selectEl.selectedIndex = i
           selectEl.value = option.value
-          console.log(
-            `✅ Selected partial match: "${option.text}" (value="${option.value}")`
-          )
 
           selectEl.dispatchEvent(
             new Event("change", { bubbles: true, composed: true })
@@ -430,7 +414,6 @@ export async function genericFill(
         }
       }
 
-      console.warn(`⚠️ No matching option found for value: "${value}"`)
       return false
     }
 
