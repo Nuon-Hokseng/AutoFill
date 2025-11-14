@@ -1,5 +1,4 @@
 // Storage service to manage autofill data (custom or auto-generated)
-import type { DummyUserData } from "./geminiService"
 import { getCachedOrGenerateData } from "./geminiService"
 
 export interface AutofillData {
@@ -119,7 +118,7 @@ export async function getAutofillData(): Promise<{
 
       // No custom data - check if AI mode is enabled
       if (!aiModeEnabled) {
-        console.log("🚫 AI mode disabled, no data available")
+        console.log("🚫 AI mode disabled and no custom data available")
         resolve({ data: null, source: "none" })
         return
       }
@@ -132,7 +131,7 @@ export async function getAutofillData(): Promise<{
         console.log("✅ Using Gemini-generated data")
         resolve({ data: generatedData, source: "generated" })
       } else {
-        console.warn("⚠️ Failed to generate data, no data available")
+        console.warn("⚠️ Failed to generate AI data, no data available")
         resolve({ data: null, source: "none" })
       }
     })

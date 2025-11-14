@@ -30,15 +30,14 @@ async function initializePreload() {
   }
 }
 
-// Also preload when popup opens (if AI mode enabled)
+// Check cache status when popup opens but don't preload (will load on-demand)
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "popup") {
-    getAIMode().then((enabled) => {
-      if (enabled && !hasCachedData()) {
-        console.log("🎯 Popup opened, ensuring AI data is preloaded...")
-        preloadData()
-      }
-    })
+    if (hasCachedData()) {
+      console.log("📦 Popup opened - data already cached")
+    } else {
+      console.log("📭 Popup opened - data will be generated on first use")
+    }
   }
 })
 
@@ -49,13 +48,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "TRIGGER_AUTOFILL") {
     // Get autofill data (custom or generated)
     getAutofillData()
-      .then(({ data, source }) => {
+      .then(async ({ data, source }) => {
         if (!data) {
-          console.error("❌ No autofill data available")
+          const aiEnabled = await getAIMode()
+          const errorMsg = aiEnabled
+            ? "Failed to generate AI data. Please check your API key or try again."
+            : "No custom data found. Please add custom credentials or enable AI mode."
+
+          console.error("❌ No autofill data available:", errorMsg)
           sendResponse({
             success: false,
-            error: "No data available",
-            source: "none"
+            error: errorMsg,
+            source: "none",
+            aiEnabled: aiEnabled
           })
           return
         }

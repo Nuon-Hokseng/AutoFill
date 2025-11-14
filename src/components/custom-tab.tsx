@@ -79,34 +79,35 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
   const [form, setForm] = useState(initialFormState)
   const [status, setStatus] = useState<React.ReactNode>("")
   const [showValues, setShowValues] = useState(false)
-  const [hasAnyData, setHasAnyData] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // Convert DOB format when rawForm changes (from storage)
+  // Load initial data from storage
   useEffect(() => {
-    if (rawForm) {
-      const displayData = { ...rawForm }
+    chrome.storage.local.get("autofillData", (res) => {
+      if (res.autofillData) {
+        const displayData = { ...res.autofillData }
 
-      // Convert DOB from DD-MM-YYYY (storage) to YYYY-MM-DD (date input) if needed
-      if (displayData.dob && displayData.dob.includes("-")) {
-        const parts = displayData.dob.split("-")
-        if (parts.length === 3 && parts[0].length <= 2) {
-          // Format is DD-MM-YYYY from storage, convert to YYYY-MM-DD for input
-          const [day, month, year] = parts
-          displayData.dob = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-          console.log(
-            `📅 Converting DOB for display: ${rawForm.dob} → ${displayData.dob}`
-          )
+        // Convert DOB from DD-MM-YYYY (storage) to YYYY-MM-DD (date input) if needed
+        if (displayData.dob && displayData.dob.includes("-")) {
+          const parts = displayData.dob.split("-")
+          if (parts.length === 3 && parts[0].length <= 2) {
+            // Format is DD-MM-YYYY from storage, convert to YYYY-MM-DD for input
+            const [day, month, year] = parts
+            displayData.dob = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+            console.log(
+              `📅 Converting DOB for display: ${res.autofillData.dob} → ${displayData.dob}`
+            )
+          }
+          // If already YYYY-MM-DD, keep as is
         }
-        // If already YYYY-MM-DD, keep as is
-      }
 
-      setForm(displayData)
-      console.log("� Updated display form from storage:", displayData)
-    } else {
-      setForm(initialFormState)
-    }
-  }, [rawForm])
+        setForm(displayData)
+        console.log("📝 Updated display form from storage:", displayData)
+      } else {
+        setForm(initialFormState)
+      }
+    })
+  }, [])
 
   // Manual refresh function - reload from storage
   const handleRefresh = () => {
@@ -148,14 +149,6 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
       }, 2000)
     })
   }
-
-  // Check if form has any data
-  useEffect(() => {
-    const hasData = Object.values(form || {}).some(
-      (value) => value && typeof value === "string" && value.trim() !== ""
-    )
-    setHasAnyData(hasData)
-  }, [form])
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -336,51 +329,6 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
             </button>
           </div>
         </div>
-
-        {!hasAnyData && (
-          <div className="plasmo-bg-blue-50 plasmo-border plasmo-border-blue-200 plasmo-rounded-lg plasmo-p-3 plasmo-flex plasmo-items-start plasmo-gap-2">
-            <Sparkles className="plasmo-w-5 plasmo-h-5 plasmo-text-blue-600 plasmo-flex-shrink-0 plasmo-mt-0.5" />
-            <div className="plasmo-text-sm plasmo-text-blue-800">
-              <p className="plasmo-font-medium plasmo-mb-1">
-                AI-Generated Data Active
-              </p>
-              <p className="plasmo-text-blue-700">
-                Since no custom data is saved, we'll use AI-generated dummy data
-                for autofill.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {hasAnyData && form?.comments?.includes("API unavailability") && (
-          <div className="plasmo-bg-yellow-50 plasmo-border plasmo-border-yellow-300 plasmo-rounded-lg plasmo-p-3 plasmo-flex plasmo-items-start plasmo-gap-2">
-            <Info className="plasmo-w-5 plasmo-h-5 plasmo-text-yellow-600 plasmo-flex-shrink-0 plasmo-mt-0.5" />
-            <div className="plasmo-text-sm plasmo-text-yellow-800">
-              <p className="plasmo-font-medium plasmo-mb-1">
-                Local Fallback Data
-              </p>
-              <p className="plasmo-text-yellow-700">
-                This data was generated locally because the AI API quota was
-                exceeded. The data is still randomized and realistic.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {hasAnyData && !form?.comments?.includes("API unavailability") && (
-          <div className="plasmo-bg-green-50 plasmo-border plasmo-border-green-200 plasmo-rounded-lg plasmo-p-3 plasmo-flex plasmo-items-start plasmo-gap-2">
-            <Info className="plasmo-w-5 plasmo-h-5 plasmo-text-green-600 plasmo-flex-shrink-0 plasmo-mt-0.5" />
-            <div className="plasmo-text-sm plasmo-text-green-800">
-              <p className="plasmo-font-medium plasmo-mb-1">
-                Saved Credentials
-              </p>
-              <p className="plasmo-text-green-700">
-                These credentials will be used for autofill. You can edit or
-                remove them anytime.
-              </p>
-            </div>
-          </div>
-        )}
 
         <div className="plasmo-space-y-3 plasmo-max-h-96 plasmo-overflow-y-auto plasmo-pr-2">
           {Object.entries(inputFieldGroups).map(([groupName, fields]) => (

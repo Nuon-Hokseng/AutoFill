@@ -3,9 +3,15 @@ import { GoogleGenerativeAI } from "@google/generative-ai"
 
 // Initialize Gemini AI
 const getGeminiClient = () => {
-  const apiKey = process.env.PLASMO_PUBLIC_GEMINI_API_KEY
+  const apiKey = process.env.PLASMO_PUBLIC_GEMINI_API
   if (!apiKey) {
-    console.error("Gemini API key not found in environment variables")
+    console.error(
+      "Gemini API key not found. Make sure PLASMO_PUBLIC_GEMINI_API is set in .env file"
+    )
+    console.error(
+      "Available env vars:",
+      Object.keys(process.env).filter((k) => k.startsWith("PLASMO"))
+    )
     return null
   }
   return new GoogleGenerativeAI(apiKey)
@@ -71,127 +77,12 @@ export interface DummyUserData {
   comments?: string
 }
 
-// Fallback dummy data when API is unavailable
-function generateFallbackDummyData(): DummyUserData {
-  const firstNames = [
-    "Yuki",
-    "Amara",
-    "Diego",
-    "Priya",
-    "Khalid",
-    "Sofia",
-    "Chen",
-    "Olga",
-    "Ravi",
-    "Zara"
-  ]
-  const lastNames = [
-    "Tanaka",
-    "Okonkwo",
-    "Rodriguez",
-    "Sharma",
-    "Al-Rashid",
-    "Ivanova",
-    "Wong",
-    "Silva",
-    "Patel",
-    "Kim"
-  ]
-  const cities = [
-    "Tokyo",
-    "Lagos",
-    "Mumbai",
-    "Cairo",
-    "São Paulo",
-    "Seoul",
-    "Bangkok",
-    "Istanbul",
-    "London",
-    "Toronto"
-  ]
-  const companies = [
-    "Tech Solutions Inc",
-    "Global Dynamics",
-    "Innovation Labs",
-    "Digital Ventures",
-    "Future Systems"
-  ]
-  const positions = [
-    "Software Engineer",
-    "Product Manager",
-    "Data Analyst",
-    "UX Designer",
-    "Marketing Specialist"
-  ]
-
-  const firstName = firstNames[Math.floor(Math.random() * firstNames.length)]
-  const lastName = lastNames[Math.floor(Math.random() * lastNames.length)]
-  const middleName = firstNames[
-    Math.floor(Math.random() * firstNames.length)
-  ].substring(0, 5)
-  const city = cities[Math.floor(Math.random() * cities.length)]
-  const company = companies[Math.floor(Math.random() * companies.length)]
-  const position = positions[Math.floor(Math.random() * positions.length)]
-
-  const randomDigits = (n: number) =>
-    Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join("")
-  const randomYear = 1965 + Math.floor(Math.random() * 40) // 1965-2005
-  const randomMonth = 1 + Math.floor(Math.random() * 12)
-  const randomDay = 1 + Math.floor(Math.random() * 28)
-  const age = new Date().getFullYear() - randomYear
-
-  return {
-    title: Math.random() > 0.5 ? "Mr" : "Ms",
-    firstname: firstName,
-    middlename: middleName,
-    middleinitial: middleName[0],
-    lastname: lastName,
-    fullname: `${firstName} ${middleName} ${lastName}`,
-    username: `${firstName.toLowerCase()}${randomDigits(3)}`,
-    email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
-    password: `${firstName}${randomDigits(4)}!@#`,
-    gender: Math.random() > 0.5 ? "2" : "1",
-    dob: `${String(randomDay).padStart(2, "0")}-${String(randomMonth).padStart(2, "0")}-${randomYear}`,
-    age: String(age),
-    birthplace: `${city}, World`,
-    ssn: `${randomDigits(3)}-${randomDigits(2)}-${randomDigits(4)}`,
-    driverslicense: `DL${randomDigits(8)}`,
-    company: company,
-    position: position,
-    address1: `${randomDigits(3)} Main Street`,
-    address2: `Apt ${randomDigits(2)}`,
-    city: city,
-    state: "CA",
-    zipcode: randomDigits(5),
-    postalcode: randomDigits(5),
-    country: "United States",
-    homephone: `${randomDigits(3)}-${randomDigits(3)}-${randomDigits(4)}`,
-    workphone: `${randomDigits(3)}-${randomDigits(3)}-${randomDigits(4)}`,
-    fax: `${randomDigits(3)}-${randomDigits(3)}-${randomDigits(4)}`,
-    cellphone: `${randomDigits(3)}-${randomDigits(3)}-${randomDigits(4)}`,
-    website: `https://${firstName.toLowerCase()}${lastName.toLowerCase()}.com`,
-    userid: `${firstName.toLowerCase()}${randomDigits(3)}`,
-    creditcardtype: ["Visa", "Mastercard", "Amex", "Discover"][
-      Math.floor(Math.random() * 4)
-    ],
-    creditcardnumber: `4${randomDigits(15)}`,
-    cardverificationcode: randomDigits(3),
-    cardexpiration: `${String(randomMonth).padStart(2, "0")}/${String(randomYear + 60).slice(-2)}`,
-    cardusername: `${firstName} ${middleName} ${lastName}`,
-    cardissuingbank: "Global Bank",
-    cardcustomerservicephone: `${randomDigits(3)}-${randomDigits(3)}-${randomDigits(4)}`,
-    income: `${50 + Math.floor(Math.random() * 150)}000`,
-    custommessage: "This is a test account",
-    comments: "Generated locally due to API unavailability"
-  }
-}
-
 export async function generateDummyData(): Promise<DummyUserData | null> {
   const genAI = getGeminiClient()
 
   if (!genAI) {
-    console.error("Failed to initialize Gemini client, using fallback data")
-    return generateFallbackDummyData()
+    console.error("Failed to initialize Gemini client - API key missing")
+    return null
   }
 
   const prompt = `
@@ -301,7 +192,8 @@ Example format:
 `
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+    // Use gemini-1.5-flash for production with Pro plan support
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" })
     const response = await model.generateContent(prompt)
     let content = await response.response.text()
 
@@ -328,57 +220,60 @@ Example format:
     return data
   } catch (error) {
     console.error("Error generating dummy data with Gemini:", error)
-
-    // Check if it's a quota/rate limit error
-    const errorMessage = error?.toString() || ""
-    if (
-      errorMessage.includes("quota") ||
-      errorMessage.includes("rate limit") ||
-      errorMessage.includes("429") ||
-      errorMessage.includes("RESOURCE_EXHAUSTED")
-    ) {
-      console.warn(
-        "⚠️ API quota exceeded, using fallback local data generation"
-      )
-      return generateFallbackDummyData()
+    if (error instanceof Error) {
+      console.error("Error message:", error.message)
+      console.error("Error stack:", error.stack)
     }
-
-    // For other errors, also use fallback
-    console.warn("⚠️ API error occurred, using fallback local data generation")
-    return generateFallbackDummyData()
+    return null
   }
 }
 
 // Cache for generated data to avoid multiple API calls
 let cachedData: DummyUserData | null = null
 let cacheTimestamp: number = 0
-const CACHE_DURATION = 1 * 60 * 1000
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes to reduce API calls
+
+// Track if generation is in progress to prevent concurrent calls
+let isGenerating = false
+let generationPromise: Promise<DummyUserData | null> | null = null
 
 export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
   const now = Date.now()
 
   // Return cached data if it's still valid
   if (cachedData && now - cacheTimestamp < CACHE_DURATION) {
-    console.log("📦 Using cached dummy data")
+    console.log(
+      "📦 Using cached dummy data (age: " +
+        Math.floor((now - cacheTimestamp) / 1000) +
+        "s)"
+    )
     return cachedData
   }
 
-  // Generate new data (will use fallback if API fails)
-  const newData = await generateDummyData()
-
-  if (newData) {
-    cachedData = newData
-    cacheTimestamp = now
-  } else {
-    // Last resort: use fallback if everything fails
-    console.warn("⚠️ All generation methods failed, using fresh fallback data")
-    const fallbackData = generateFallbackDummyData()
-    cachedData = fallbackData
-    cacheTimestamp = now
-    return fallbackData
+  // If already generating, wait for that to complete
+  if (isGenerating && generationPromise) {
+    console.log("⏳ Generation already in progress, waiting...")
+    return generationPromise
   }
 
-  return newData
+  // Generate new data from Gemini API only
+  isGenerating = true
+  generationPromise = generateDummyData()
+
+  try {
+    const newData = await generationPromise
+
+    if (newData) {
+      cachedData = newData
+      cacheTimestamp = Date.now()
+      console.log("✅ New data cached successfully")
+    }
+
+    return newData
+  } finally {
+    isGenerating = false
+    generationPromise = null
+  }
 }
 
 // Preload data into cache without waiting

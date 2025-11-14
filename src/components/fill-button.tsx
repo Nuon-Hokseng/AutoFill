@@ -13,7 +13,7 @@ export const FillButton = ({
   onStatusChange?: (s: "idle" | "loading" | "success" | "error") => void
 }) => {
   const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "error" | "noform"
+    "idle" | "loading" | "success" | "error" | "noform" | "nodata"
   >("idle")
   const [dataSource, setDataSource] = useState<"custom" | "generated" | null>(
     null
@@ -53,7 +53,9 @@ export const FillButton = ({
           if (onStatusChange) onStatusChange("idle")
         }, 3000)
       } else {
-        setStatus("error")
+        // Determine error type based on response
+        const isAiDisabled = response?.aiEnabled === false
+        setStatus(isAiDisabled ? "nodata" : "error")
         setDataSource(null)
         if (onStatusChange) onStatusChange("error")
         if (onResult) onResult({ filled: 0, total: 0 })
@@ -116,7 +118,17 @@ export const FillButton = ({
             className="plasmo-text-red-500 plasmo-flex plasmo-items-center plasmo-gap-2">
             <X className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse" />
             <span className="plasmo-text-sm plasmo-text-red-600">
-              No Form Detected
+              Failed to generate AI data. Check API key.
+            </span>
+          </span>
+        )}
+        {status === "nodata" && (
+          <span
+            aria-label="nodata"
+            className="plasmo-text-orange-500 plasmo-flex plasmo-items-center plasmo-gap-2">
+            <AlertCircle className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse" />
+            <span className="plasmo-text-sm plasmo-text-orange-600">
+              No custom data. Add data or enable AI mode.
             </span>
           </span>
         )}
