@@ -1,16 +1,27 @@
 // Service for generating dummy data using Gemini API
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
-// Initialize Gemini AI
-const getGeminiClient = () => {
-  const apiKey = process.env.PLASMO_PUBLIC_GEMINI_API
+// Local helper to read key from storage to avoid circular deps
+const readStoredGeminiKey = async (): Promise<string | null> => {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.local.get("geminiApiKey", (res) => {
+        resolve((res.geminiApiKey as string | undefined) || null)
+      })
+    } catch (e) {
+      resolve(null)
+    }
+  })
+}
+
+// Initialize Gemini AI (prefers runtime key from storage, falls back to env)
+const getGeminiClient = async () => {
+  const storedKey = await readStoredGeminiKey()
+  const envKey = process.env.PLASMO_PUBLIC_GEMINI_API
+  const apiKey = storedKey || envKey
   if (!apiKey) {
     console.error(
-      "Gemini API key not found. Make sure PLASMO_PUBLIC_GEMINI_API is set in .env file"
-    )
-    console.error(
-      "Available env vars:",
-      Object.keys(process.env).filter((k) => k.startsWith("PLASMO"))
+      "Gemini API key not found. Set it in Settings or set PLASMO_PUBLIC_GEMINI_API in .env"
     )
     return null
   }
@@ -84,7 +95,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 export async function generateDummyData(
   retryCount: number = 0
 ): Promise<DummyUserData | null> {
-  const genAI = getGeminiClient()
+  const genAI = await getGeminiClient()
 
   if (!genAI) {
     console.error("Failed to initialize Gemini client - API key missing")
@@ -197,79 +208,78 @@ Example format:
 }
 `
 
-  // Try multiple models with retry logic
-  const models = ["gemini-2.5-pro", "gemini-1.5-flash", "gemini-1.5-pro"]
-  const maxRetries = 2
+  // Use only gemini-2.0-flash-exp as specified
+  const modelName = "gemini-2.5-pro"
+  const maxRetries = 3
 
-  for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
-    const modelName = models[modelIndex]
-
+  // Helper to clean and parse JSON from model response
+  const tryParseJson = (text: string): DummyUserData | null => {
     try {
-      console.log(`🔄 Attempting to generate data using ${modelName}...`)
-      const model = genAI.getGenerativeModel({ model: modelName })
-      const response = await model.generateContent(prompt)
-      let content = await response.response.text()
-
-      // Clean up the response - remove markdown code blocks if present
-      content = content.replace(/```json\s*|\s*```/g, "").trim()
-
-      const data = JSON.parse(content) as DummyUserData
-
-      // Validate the data structure - only check required fields
-      if (
-        !data.username ||
-        !data.email ||
-        !data.password ||
-        !data.firstname ||
-        !data.lastname ||
-        !data.dob ||
-        !data.gender
-      ) {
-        console.error("Generated data is missing required fields:", data)
-        continue // Try next model
-      }
-
-      console.log(`✅ Successfully generated dummy data via ${modelName}`)
-      return data
-    } catch (error: any) {
-      const errorMsg = error?.message || String(error)
-      console.error(`❌ Error with ${modelName}:`, errorMsg)
-
-      // Check if it's a 503 overload or 429 quota error
-      if (
-        errorMsg.includes("503") ||
-        errorMsg.includes("overloaded") ||
-        errorMsg.includes("429") ||
-        errorMsg.includes("quota")
-      ) {
-        console.warn(`⚠️ ${modelName} is temporarily unavailable`)
-
-        // If this is the last model, try retry with exponential backoff
-        if (modelIndex === models.length - 1 && retryCount < maxRetries) {
-          const waitTime = Math.pow(2, retryCount) * 2000 // 2s, 4s, 8s
-          console.log(
-            `⏳ Retry ${retryCount + 1}/${maxRetries} after ${waitTime}ms...`
-          )
-          await delay(waitTime)
-          return generateDummyData(retryCount + 1)
-        }
-
-        // Otherwise, try the next model (fallback)
-        if (modelIndex < models.length - 1) {
-          console.log(`🔄 Falling back to ${models[modelIndex + 1]}...`)
-          await delay(1000) // Brief delay before trying next model
-          continue
-        }
-      }
-
-      // For other errors on last model, just fail
-      if (modelIndex === models.length - 1) {
-        console.error("❌ All models failed to generate data")
-        return null
-      }
+      // Remove markdown fences if any
+      const cleaned = text
+        .trim()
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/```\s*$/i, "")
+        .trim()
+      const parsed = JSON.parse(cleaned)
+      return parsed as DummyUserData
+    } catch (e) {
+      console.error("JSON parse error:", e)
+      console.error("Raw response:", text.substring(0, 200))
+      return null
     }
   }
 
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(
+        `🤖 Calling Gemini ${modelName} (attempt ${attempt + 1}/${maxRetries + 1})...`
+      )
+      const model = genAI.getGenerativeModel({ model: modelName })
+      const result = await model.generateContent(prompt)
+      const response = result.response
+
+      // Check for safety blocks or other issues
+      if (!response) {
+        console.error("❌ No response from Gemini API")
+        continue
+      }
+
+      const text = response.text()
+      console.log(`✅ Got response from Gemini (${text.length} chars)`)
+
+      const json = tryParseJson(text)
+      if (json) {
+        console.log("✅ Successfully parsed JSON data")
+        return json
+      }
+      console.warn(
+        `⚠️ Model returned non-JSON response on attempt ${attempt + 1}`
+      )
+    } catch (error: any) {
+      console.error(
+        `❌ Gemini call failed (attempt ${attempt + 1}/${maxRetries + 1}):`,
+        error?.message || error
+      )
+      // Log additional error details if available
+      if (error?.response) {
+        console.error("Error response:", error.response)
+      }
+      if (error?.status) {
+        console.error("Error status:", error.status)
+      }
+    }
+
+    // Backoff before retrying
+    if (attempt < maxRetries) {
+      const delayMs = 1000 * (attempt + 1)
+      console.log(`⏳ Waiting ${delayMs}ms before retry...`)
+      await delay(delayMs)
+    }
+  }
+
+  console.error("❌ All generation attempts failed")
   return null
 }
 

@@ -188,3 +188,48 @@ export async function hasCustomData(): Promise<boolean> {
     })
   })
 }
+
+/**
+ * Gemini API key helpers (runtime configurable)
+ */
+export async function getGeminiApiKey(): Promise<string | null> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get("geminiApiKey", (res) => {
+      const key = (res.geminiApiKey as string | undefined) || null
+      resolve(key)
+    })
+  })
+}
+
+export async function setGeminiApiKey(
+  key: string
+): Promise<{ success: boolean }> {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ geminiApiKey: key }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error saving Gemini API key:", chrome.runtime.lastError)
+        resolve({ success: false })
+      } else {
+        console.log("✅ Gemini API key saved")
+        resolve({ success: true })
+      }
+    })
+  })
+}
+
+export async function clearGeminiApiKey(): Promise<{ success: boolean }> {
+  return new Promise((resolve) => {
+    chrome.storage.local.remove("geminiApiKey", () => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Error clearing Gemini API key:",
+          chrome.runtime.lastError
+        )
+        resolve({ success: false })
+      } else {
+        console.log("✅ Gemini API key cleared")
+        resolve({ success: true })
+      }
+    })
+  })
+}

@@ -11,6 +11,11 @@ import { useEffect, useState } from "react"
 
 import CustomTab from "~components/custom-tab"
 import { FillButton } from "~components/fill-button"
+import {
+  clearGeminiApiKey,
+  getGeminiApiKey,
+  setGeminiApiKey
+} from "~services/storageService"
 
 import "~style.css"
 
@@ -24,11 +29,17 @@ export default function IndexPopup() {
   const [totalCount, setTotalCount] = useState<number | null>(null)
   const [isFilling, setIsFilling] = useState(false)
   const [aiModeEnabled, setAiModeEnabled] = useState(true)
+  const [apiKey, setApiKey] = useState("")
+  const [hasApiKey, setHasApiKey] = useState(false)
 
   // Load AI mode setting on mount
   useEffect(() => {
     chrome.storage.local.get("aiModeEnabled", (res) => {
       setAiModeEnabled(res.aiModeEnabled !== false) // Default to true
+    })
+    getGeminiApiKey().then((k) => {
+      setHasApiKey(!!k)
+      setApiKey(k ? "" : "")
     })
   }, [])
 
@@ -175,6 +186,51 @@ export default function IndexPopup() {
           </div>
 
           <div className="plasmo-space-y-4">
+            {/* Gemini API Key */}
+            <div className="plasmo-space-y-2 plasmo-p-3 plasmo-border plasmo-border-gray-200 plasmo-rounded-lg">
+              <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+                <div>
+                  <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
+                    Gemini API Key
+                  </div>
+                  <p className="plasmo-text-xs plasmo-text-gray-500">
+                    {hasApiKey ? "Key is set (stored locally)" : "No key saved"}
+                  </p>
+                </div>
+              </div>
+              <div className="plasmo-flex plasmo-gap-2">
+                <input
+                  type="password"
+                  placeholder="Paste API key"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="plasmo-flex-1 plasmo-text-sm plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-rounded"
+                />
+                <button
+                  onClick={async () => {
+                    if (!apiKey.trim()) return
+                    const res = await setGeminiApiKey(apiKey.trim())
+                    if (res.success) {
+                      setHasApiKey(true)
+                      setApiKey("")
+                    }
+                  }}
+                  className="plasmo-text-sm plasmo-px-3 plasmo-py-1 plasmo-bg-blue-600 plasmo-text-white plasmo-rounded">
+                  Save
+                </button>
+                <button
+                  onClick={async () => {
+                    const res = await clearGeminiApiKey()
+                    if (res.success) {
+                      setHasApiKey(false)
+                    }
+                  }}
+                  className="plasmo-text-sm plasmo-px-3 plasmo-py-1 plasmo-bg-gray-100 plasmo-text-gray-800 plasmo-rounded">
+                  Clear
+                </button>
+              </div>
+            </div>
+
             <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-py-2">
               <div>
                 <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
