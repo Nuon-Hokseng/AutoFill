@@ -6,6 +6,7 @@ import {
   EyeOff,
   Info,
   RefreshCw,
+  Settings2,
   Sparkles,
   Trash,
   Trash2,
@@ -80,10 +81,16 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
   const [status, setStatus] = useState<React.ReactNode>("")
   const [showValues, setShowValues] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showFieldSelector, setShowFieldSelector] = useState(false)
+
+  // Field selection state - default to most common fields
+  const [enabledFields, setEnabledFields] = useState<Set<string>>(
+    new Set(["firstname", "lastname", "username", "email", "password"])
+  )
 
   // Load initial data from storage
   useEffect(() => {
-    chrome.storage.local.get("autofillData", (res) => {
+    chrome.storage.local.get(["autofillData", "enabledFields"], (res) => {
       if (res.autofillData) {
         const displayData = { ...res.autofillData }
 
@@ -105,6 +112,12 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
         console.log("📝 Updated display form from storage:", displayData)
       } else {
         setForm(initialFormState)
+      }
+
+      // Load enabled fields
+      if (res.enabledFields && Array.isArray(res.enabledFields)) {
+        setEnabledFields(new Set(res.enabledFields))
+        console.log("📋 Loaded enabled fields:", res.enabledFields)
       }
     })
   }, [])
@@ -176,17 +189,24 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
       }
     }
 
-    // Save to storage
-    chrome.storage.local.set({ autofillData: payload }, () => {
-      console.log("✅ Custom data saved successfully:", payload)
-      setStatus(
-        <span className=" plasmo-flex plasmo-justify-center plasmo-items-center plasmo-gap-2 ">
-          <CheckCheck className=" plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-green-600" />
-          <span className="plasmo-text-gray-700">Saved</span>
-        </span>
-      )
-      setTimeout(() => setStatus(""), 2000)
-    })
+    // Save to storage along with enabled fields
+    chrome.storage.local.set(
+      {
+        autofillData: payload,
+        enabledFields: Array.from(enabledFields)
+      },
+      () => {
+        console.log("✅ Custom data saved successfully:", payload)
+        console.log("✅ Enabled fields saved:", Array.from(enabledFields))
+        setStatus(
+          <span className=" plasmo-flex plasmo-justify-center plasmo-items-center plasmo-gap-2 ">
+            <CheckCheck className=" plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-green-600" />
+            <span className="plasmo-text-gray-700">Saved</span>
+          </span>
+        )
+        setTimeout(() => setStatus(""), 2000)
+      }
+    )
   }
 
   const handleRemove = () => {
@@ -203,9 +223,12 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
         return
       }
 
-      // Remove saved data
-      chrome.storage.local.remove("autofillData", () => {
+      // Remove saved data and enabled fields
+      chrome.storage.local.remove(["autofillData", "enabledFields"], () => {
         setForm(initialFormState)
+        setEnabledFields(
+          new Set(["firstname", "lastname", "username", "email", "password"])
+        )
         console.log("🗑️ Custom data removed successfully")
         setStatus(
           <span className="plasmo-justify-center plasmo-flex plasmo-items-center plasmo-gap-2 ">
@@ -216,6 +239,16 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
         setTimeout(() => setStatus(""), 2000)
       })
     })
+  }
+
+  const toggleField = (fieldKey: string) => {
+    const newSet = new Set(enabledFields)
+    if (newSet.has(fieldKey)) {
+      newSet.delete(fieldKey)
+    } else {
+      newSet.add(fieldKey)
+    }
+    setEnabledFields(newSet)
   }
 
   const inputFieldGroups = {
@@ -322,6 +355,12 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
               />
             </button>
             <button
+              onClick={() => setShowFieldSelector((s) => !s)}
+              className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600 hover:plasmo-bg-gray-100"
+              aria-label="Select fields">
+              <Settings2 size={16} />
+            </button>
+            <button
               onClick={() => setShowValues((s) => !s)}
               className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600 hover:plasmo-bg-gray-100"
               aria-label={showValues ? "Hide values" : "Show values"}>
@@ -330,56 +369,131 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
           </div>
         </div>
 
-        <div className="plasmo-space-y-3 plasmo-max-h-96 plasmo-overflow-y-auto plasmo-pr-2">
-          {Object.entries(inputFieldGroups).map(([groupName, fields]) => (
-            <div key={groupName} className="plasmo-space-y-2">
-              <h3 className="plasmo-text-xs plasmo-font-semibold plasmo-text-gray-600 plasmo-uppercase plasmo-tracking-wide plasmo-pt-2 plasmo-border-t plasmo-border-gray-200">
-                {groupName}
+        {showFieldSelector && (
+          <div className="plasmo-p-3 plasmo-bg-blue-50 plasmo-border plasmo-border-blue-200 plasmo-rounded-lg plasmo-space-y-2">
+            <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+              <h3 className="plasmo-text-sm plasmo-font-semibold plasmo-text-gray-800">
+                Select Fields to Enable
               </h3>
-              {fields.map(({ key, label, type, options }: any) => {
-                if (type === "select") {
-                  return (
-                    <label key={key} htmlFor={key} className="plasmo-block">
-                      <span className="plasmo-block plasmo-text-xs plasmo-text-gray-700 plasmo-mb-1">
-                        {label}
-                      </span>
-                      <select
-                        id={key}
-                        value={form?.[key] || ""}
-                        onChange={handleInputChange}
-                        className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1.5 plasmo-text-sm">
-                        {options ? (
-                          options.map((opt: string) => (
-                            <option key={opt} value={opt}>
-                              {opt === ""
-                                ? "Select..."
-                                : key === "gender"
-                                  ? opt === "1"
-                                    ? "Female"
-                                    : opt === "2"
-                                      ? "Male"
-                                      : opt === "-1"
-                                        ? "Custom"
-                                        : opt
-                                  : opt}
-                            </option>
-                          ))
-                        ) : (
-                          <>
-                            <option value="" disabled>
-                              Select...
-                            </option>
-                            <option value="1">Female</option>
-                            <option value="2">Male</option>
-                            <option value="-1">Custom</option>
-                          </>
-                        )}
-                      </select>
-                    </label>
-                  )
-                }
+              <button
+                onClick={() => setShowFieldSelector(false)}
+                className="plasmo-text-gray-600 hover:plasmo-text-gray-800">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="plasmo-max-h-60 plasmo-overflow-y-auto plasmo-space-y-2 plasmo-pr-2">
+              {Object.entries(inputFieldGroups).map(([groupName, fields]) => (
+                <div key={groupName} className="plasmo-space-y-1">
+                  <h4 className="plasmo-text-xs plasmo-font-semibold plasmo-text-gray-600 plasmo-uppercase">
+                    {groupName}
+                  </h4>
+                  <div className="plasmo-grid plasmo-grid-cols-2 plasmo-gap-1">
+                    {fields.map(({ key, label }: any) => (
+                      <label
+                        key={key}
+                        className="plasmo-flex plasmo-items-center plasmo-gap-1 plasmo-text-xs plasmo-cursor-pointer plasmo-p-1 plasmo-rounded hover:plasmo-bg-blue-100">
+                        <input
+                          type="checkbox"
+                          checked={enabledFields.has(key)}
+                          onChange={() => toggleField(key)}
+                          className="plasmo-w-3 plasmo-h-3"
+                        />
+                        <span className="plasmo-text-gray-700">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-                if (type === "date") {
+        <div className="plasmo-space-y-3 plasmo-max-h-96 plasmo-overflow-y-auto plasmo-pr-2">
+          {Object.entries(inputFieldGroups).map(([groupName, fields]) => {
+            const enabledInGroup = fields.filter(({ key }: any) =>
+              enabledFields.has(key)
+            )
+            if (enabledInGroup.length === 0) return null
+
+            return (
+              <div key={groupName} className="plasmo-space-y-2">
+                <h3 className="plasmo-text-xs plasmo-font-semibold plasmo-text-gray-600 plasmo-uppercase plasmo-tracking-wide plasmo-pt-2 plasmo-border-t plasmo-border-gray-200">
+                  {groupName}
+                </h3>
+                {fields.map(({ key, label, type, options }: any) => {
+                  const isEnabled = enabledFields.has(key)
+                  if (!isEnabled) return null
+
+                  if (type === "select") {
+                    return (
+                      <label key={key} htmlFor={key} className="plasmo-block">
+                        <span className="plasmo-block plasmo-text-xs plasmo-text-gray-700 plasmo-mb-1">
+                          {label}
+                        </span>
+                        <select
+                          id={key}
+                          value={form?.[key] || ""}
+                          onChange={handleInputChange}
+                          className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1.5 plasmo-text-sm">
+                          {options ? (
+                            options.map((opt: string) => (
+                              <option key={opt} value={opt}>
+                                {opt === ""
+                                  ? "Select..."
+                                  : key === "gender"
+                                    ? opt === "1"
+                                      ? "Female"
+                                      : opt === "2"
+                                        ? "Male"
+                                        : opt === "-1"
+                                          ? "Custom"
+                                          : opt
+                                    : opt}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value="" disabled>
+                                Select...
+                              </option>
+                              <option value="1">Female</option>
+                              <option value="2">Male</option>
+                              <option value="-1">Custom</option>
+                            </>
+                          )}
+                        </select>
+                      </label>
+                    )
+                  }
+
+                  if (type === "date") {
+                    return (
+                      <label key={key} htmlFor={key} className="plasmo-block">
+                        <span className="plasmo-block plasmo-text-xs plasmo-text-gray-700 plasmo-mb-1">
+                          {label}
+                        </span>
+                        <input
+                          id={key}
+                          type="date"
+                          max="2010-01-01"
+                          value={form?.[key] || ""}
+                          onChange={handleInputChange as any}
+                          className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1.5 plasmo-text-sm plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
+                        />
+                      </label>
+                    )
+                  }
+
+                  // For non-select/non-date inputs, toggle masking when showValues is false
+                  const renderType =
+                    type === "date" || type === "select"
+                      ? type
+                      : showValues
+                        ? type === "password"
+                          ? "text"
+                          : type
+                        : "password"
+
                   return (
                     <label key={key} htmlFor={key} className="plasmo-block">
                       <span className="plasmo-block plasmo-text-xs plasmo-text-gray-700 plasmo-mb-1">
@@ -387,44 +501,18 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
                       </span>
                       <input
                         id={key}
-                        type="date"
-                        max="2010-01-01"
+                        type={renderType as any}
+                        placeholder={label}
                         value={form?.[key] || ""}
                         onChange={handleInputChange as any}
                         className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1.5 plasmo-text-sm plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
                       />
                     </label>
                   )
-                }
-
-                // For non-select/non-date inputs, toggle masking when showValues is false
-                const renderType =
-                  type === "date" || type === "select"
-                    ? type
-                    : showValues
-                      ? type === "password"
-                        ? "text"
-                        : type
-                      : "password"
-
-                return (
-                  <label key={key} htmlFor={key} className="plasmo-block">
-                    <span className="plasmo-block plasmo-text-xs plasmo-text-gray-700 plasmo-mb-1">
-                      {label}
-                    </span>
-                    <input
-                      id={key}
-                      type={renderType as any}
-                      placeholder={label}
-                      value={form?.[key] || ""}
-                      onChange={handleInputChange as any}
-                      className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1.5 plasmo-text-sm plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
-                    />
-                  </label>
-                )
-              })}
-            </div>
-          ))}
+                })}
+              </div>
+            )
+          })}
         </div>
 
         <div className="plasmo-flex plasmo-gap-2 plasmo-mt-2">
