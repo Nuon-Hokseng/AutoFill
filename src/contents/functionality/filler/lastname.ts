@@ -30,7 +30,6 @@ export function detectLastNameField(
 
     if (matchesAny(tagStr, LASTNAME_KEYWORDS)) {
       lastnameEl = el
-      console.log("Found last name field by attribute matching")
       break
     }
   }
@@ -45,7 +44,6 @@ export async function fillLastName(
   if (!lastnameEl || !lastname) return false
 
   try {
-    console.log("Filling last name field")
     await fillFieldWithAnimation(lastnameEl, lastname)
     return true
   } catch (error) {

@@ -45,13 +45,10 @@ export function detectGenderFields(): GenderRadios {
       // Priority check: Use numeric values first (most reliable)
       if (value === "2") {
         genderRadios.male = radio
-        console.log("Found male gender radio with value '2'")
       } else if (value === "1") {
         genderRadios.female = radio
-        console.log("Found female gender radio with value '1'")
       } else if (value === "-1") {
         genderRadios.custom = radio
-        console.log("Found custom gender radio with value '-1'")
       }
       // Fallback: text-based detection only if no numeric values found
       else if (
@@ -61,7 +58,6 @@ export function detectGenderFields(): GenderRadios {
           matchesAny(labelText, ["male", "m", "man", "Male"]))
       ) {
         genderRadios.male = radio
-        console.log("Found male gender radio with text-based detection")
       } else if (
         !genderRadios.female &&
         (matchesAny(value, ["female", "f", "woman", "Female"]) ||
@@ -69,7 +65,6 @@ export function detectGenderFields(): GenderRadios {
           matchesAny(labelText, ["female", "f", "woman", "Female"]))
       ) {
         genderRadios.female = radio
-        console.log("Found female gender radio with text-based detection")
       } else if (
         !genderRadios.custom &&
         (matchesAny(value, ["custom", "other", "prefer not to say"]) ||
@@ -77,7 +72,6 @@ export function detectGenderFields(): GenderRadios {
           matchesAny(labelText, ["custom", "other", "prefer not to say"]))
       ) {
         genderRadios.custom = radio
-        console.log("Found custom gender radio with text-based detection")
       }
     }
   }
@@ -124,7 +118,6 @@ export async function fillGender(
 
   if (genderElement) {
     try {
-      console.log(`Filling gender field: ${genderLabel}`)
       genderElement.checked = true
       triggerRadioEvents(genderElement)
       return true
@@ -132,15 +125,7 @@ export async function fillGender(
       console.error("Error filling gender field:", error)
       return false
     }
-  } else {
-    console.warn(
-      `Gender option '${targetGender}' not found in available radio buttons`
-    )
-    console.log("Available options:", {
-      male: genderRadios.male?.value || "not found",
-      female: genderRadios.female?.value || "not found",
-      custom: genderRadios.custom?.value || "not found"
-    })
-    return false
   }
+
+  return false
 }

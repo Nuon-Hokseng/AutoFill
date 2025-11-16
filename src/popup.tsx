@@ -7,13 +7,19 @@ import {
   User,
   Wand2
 } from "lucide-react"
-import React = require("react");
 import { useEffect, useState } from "react"
 
 import CustomTab from "~components/custom-tab"
 import { FillButton } from "~components/fill-button"
+import {
+  clearGeminiApiKey,
+  getGeminiApiKey,
+  setGeminiApiKey
+} from "~services/storageService"
 
 import "~style.css"
+
+import React = require("react")
 
 type View = "main" | "settings" | "custom"
 
@@ -22,6 +28,29 @@ export default function IndexPopup() {
   const [filledCount, setFilledCount] = useState<number | null>(null)
   const [totalCount, setTotalCount] = useState<number | null>(null)
   const [isFilling, setIsFilling] = useState(false)
+  const [aiModeEnabled, setAiModeEnabled] = useState(true)
+  const [apiKey, setApiKey] = useState("")
+  const [hasApiKey, setHasApiKey] = useState(false)
+
+  // Load AI mode setting on mount
+  useEffect(() => {
+    chrome.storage.local.get("aiModeEnabled", (res) => {
+      setAiModeEnabled(res.aiModeEnabled !== false) // Default to true
+    })
+    getGeminiApiKey().then((k) => {
+      setHasApiKey(!!k)
+      setApiKey(k ? "" : "")
+    })
+  }, [])
+
+  // Toggle AI mode
+  const toggleAIMode = () => {
+    const newValue = !aiModeEnabled
+    setAiModeEnabled(newValue)
+    chrome.storage.local.set({ aiModeEnabled: newValue }, () => {
+      console.log(`🤖 AI mode ${newValue ? "enabled" : "disabled"}`)
+    })
+  }
 
   // Connect to background script to trigger preload
   useEffect(() => {
@@ -53,7 +82,8 @@ export default function IndexPopup() {
               </h2>
             </div>
             <p className="plasmo-text-sm plasmo-text-gray-600 plasmo-leading-relaxed">
-              Click the button to auto-fill your credentials into focused fields
+              HClick the button to auto-fill your credentials into focused
+              fields
             </p>
           </div>
 
@@ -96,6 +126,34 @@ export default function IndexPopup() {
                 )}
               </div>
             </div>
+
+            {/* AI Mode Toggle */}
+            <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-p-3 plasmo-bg-gradient-to-r plasmo-from-purple-50 plasmo-to-blue-50 plasmo-rounded-lg plasmo-border plasmo-border-purple-200">
+              <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+                <Wand2 size={16} className="plasmo-text-purple-600" />
+                <div>
+                  <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
+                    AI Mode
+                  </div>
+                  <p className="plasmo-text-xs plasmo-text-gray-500">
+                    {aiModeEnabled ? "Generate dummy data" : "Custom data only"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={toggleAIMode}
+                className={`plasmo-relative plasmo-w-11 plasmo-h-6 plasmo-rounded-full plasmo-transition-colors plasmo-duration-200 ${
+                  aiModeEnabled ? "plasmo-bg-purple-600" : "plasmo-bg-gray-300"
+                }`}>
+                <div
+                  className={`plasmo-absolute plasmo-top-0.5 plasmo-left-0.5 plasmo-w-5 plasmo-h-5 plasmo-bg-white plasmo-rounded-full plasmo-transition-transform plasmo-duration-200 ${
+                    aiModeEnabled
+                      ? "plasmo-translate-x-5"
+                      : "plasmo-translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
           </div>
           <div className="plasmo-flex plasmo-gap-2 plasmo-pt-2 plasmo-border-t plasmo-border-gray-200">
             <button
@@ -128,6 +186,51 @@ export default function IndexPopup() {
           </div>
 
           <div className="plasmo-space-y-4">
+            {/* Gemini API Key */}
+            <div className="plasmo-space-y-2 plasmo-p-3 plasmo-border plasmo-border-gray-200 plasmo-rounded-lg">
+              <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+                <div>
+                  <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
+                    Gemini API Key
+                  </div>
+                  <p className="plasmo-text-xs plasmo-text-gray-500">
+                    {hasApiKey ? "Key is set (stored locally)" : "No key saved"}
+                  </p>
+                </div>
+              </div>
+              <div className="plasmo-flex plasmo-gap-2">
+                <input
+                  type="password"
+                  placeholder="Paste API key"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="plasmo-flex-1 plasmo-text-sm plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-rounded"
+                />
+                <button
+                  onClick={async () => {
+                    if (!apiKey.trim()) return
+                    const res = await setGeminiApiKey(apiKey.trim())
+                    if (res.success) {
+                      setHasApiKey(true)
+                      setApiKey("")
+                    }
+                  }}
+                  className="plasmo-text-sm plasmo-px-3 plasmo-py-1 plasmo-bg-blue-600 plasmo-text-white plasmo-rounded">
+                  Save
+                </button>
+                <button
+                  onClick={async () => {
+                    const res = await clearGeminiApiKey()
+                    if (res.success) {
+                      setHasApiKey(false)
+                    }
+                  }}
+                  className="plasmo-text-sm plasmo-px-3 plasmo-py-1 plasmo-bg-gray-100 plasmo-text-gray-800 plasmo-rounded">
+                  Clear
+                </button>
+              </div>
+            </div>
+
             <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-py-2">
               <div>
                 <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">

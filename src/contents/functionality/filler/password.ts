@@ -20,7 +20,6 @@ export function detectPasswordField(
     const type = (el.getAttribute("type") || "").toLowerCase()
     if (!passwordEl && type === "password") {
       passwordEl = el
-      console.log("Found password field by type attribute")
       break
     }
   }
@@ -41,7 +40,6 @@ export function detectPasswordField(
 
       if (matchesAny(tagStr, PASSWORD_KEYWORDS)) {
         passwordEl = el
-        console.log("Found password field by attribute matching")
         break
       }
     }
@@ -57,7 +55,6 @@ export async function fillPassword(
   if (!passwordEl || !password) return false
 
   try {
-    console.log("Filling password field")
     await fillFieldWithAnimation(passwordEl, password)
     return true
   } catch (error) {
