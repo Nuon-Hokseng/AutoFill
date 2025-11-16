@@ -79,14 +79,35 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
   // Local state for display with DOB conversion
   const [form, setForm] = useState(initialFormState)
   const [status, setStatus] = useState<React.ReactNode>("")
-  const [showValues, setShowValues] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [showFieldSelector, setShowFieldSelector] = useState(false)
+
+  // Track visibility for each sensitive field individually
+  const [fieldVisibility, setFieldVisibility] = useState<
+    Record<string, boolean>
+  >({})
 
   // Field selection state - default to most common fields
   const [enabledFields, setEnabledFields] = useState<Set<string>>(
     new Set(["firstname", "lastname", "username", "email", "password"])
   )
+
+  // Define which fields are sensitive and should have eye toggle
+  const sensitiveFields = new Set([
+    "password",
+    "ssn",
+    "driverslicense",
+    "creditcardnumber",
+    "cardverificationcode",
+    "cardexpiration",
+    "cardcustomerservicephone"
+  ])
+
+  const toggleFieldVisibility = (fieldKey: string) => {
+    setFieldVisibility((prev) => ({
+      ...prev,
+      [fieldKey]: !prev[fieldKey]
+    }))
+  }
 
   // Load initial data from storage
   useEffect(() => {
@@ -121,47 +142,6 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
       }
     })
   }, [])
-
-  // Manual refresh function - reload from storage
-  const handleRefresh = () => {
-    setIsRefreshing(true)
-    chrome.storage.local.get("autofillData", (res) => {
-      if (res.autofillData) {
-        const loadedData = { ...res.autofillData }
-
-        // Convert DOB format
-        if (loadedData.dob && loadedData.dob.includes("-")) {
-          const parts = loadedData.dob.split("-")
-          if (parts.length === 3 && parts[0].length <= 2) {
-            const [day, month, year] = parts
-            loadedData.dob = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-          }
-        }
-
-        setForm(loadedData)
-        console.log("🔄 Refreshed custom data from storage")
-        setStatus(
-          <span className="plasmo-flex plasmo-justify-center plasmo-items-center plasmo-gap-2">
-            <CheckCheck className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-green-600" />
-            <span className="plasmo-text-gray-700">Refreshed</span>
-          </span>
-        )
-      } else {
-        console.log("📭 No data found in storage")
-        setForm(initialFormState)
-        setStatus(
-          <span className="plasmo-flex plasmo-justify-center plasmo-items-center plasmo-gap-2">
-            <X className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-yellow-600" />
-            <span className="plasmo-text-gray-700">No data found</span>
-          </span>
-        )
-      }
-      setTimeout(() => {
-        setStatus("")
-        setIsRefreshing(false)
-      }, 2000)
-    })
-  }
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -339,32 +319,16 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
               className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600">
               <ArrowLeft size={16} />
             </button>
-            <h1 className="plasmo-text-lg plasmo-font-semibold plasmo-text-gray-800">
+            <h1 className="plasmo-text-sm plasmo-font-semibold plasmo-text-gray-800">
               Custom Credentials
             </h1>
           </div>
           <div className="plasmo-flex plasmo-items-center plasmo-gap-1">
             <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600 hover:plasmo-bg-gray-100"
-              aria-label="Refresh data">
-              <RefreshCw
-                size={16}
-                className={isRefreshing ? "plasmo-animate-spin" : ""}
-              />
-            </button>
-            <button
               onClick={() => setShowFieldSelector((s) => !s)}
               className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600 hover:plasmo-bg-gray-100"
               aria-label="Select fields">
               <Settings2 size={16} />
-            </button>
-            <button
-              onClick={() => setShowValues((s) => !s)}
-              className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600 hover:plasmo-bg-gray-100"
-              aria-label={showValues ? "Hide values" : "Show values"}>
-              {showValues ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
         </div>
@@ -484,30 +448,45 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
                     )
                   }
 
-                  // For non-select/non-date inputs, toggle masking when showValues is false
-                  const renderType =
-                    type === "date" || type === "select"
-                      ? type
-                      : showValues
-                        ? type === "password"
-                          ? "text"
-                          : type
-                        : "password"
+                  // For sensitive fields, show/hide based on field-specific visibility
+                  const isSensitive = sensitiveFields.has(key)
+                  const isVisible = fieldVisibility[key]
+                  // If sensitive and not visible, show as password, otherwise show as text
+                  const renderType = isSensitive
+                    ? isVisible
+                      ? "text"
+                      : "password"
+                    : type
 
                   return (
-                    <label key={key} htmlFor={key} className="plasmo-block">
+                    <div key={key} className="plasmo-block plasmo-relative">
                       <span className="plasmo-block plasmo-text-xs plasmo-text-gray-700 plasmo-mb-1">
                         {label}
                       </span>
-                      <input
-                        id={key}
-                        type={renderType as any}
-                        placeholder={label}
-                        value={form?.[key] || ""}
-                        onChange={handleInputChange as any}
-                        className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1.5 plasmo-text-sm plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500"
-                      />
-                    </label>
+                      <div className="plasmo-relative">
+                        <input
+                          id={key}
+                          type={renderType as any}
+                          placeholder={label}
+                          value={form?.[key] || ""}
+                          onChange={handleInputChange as any}
+                          className="plasmo-w-full plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-px-2 plasmo-py-1.5 plasmo-text-sm plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500 plasmo-pr-8"
+                        />
+                        {isSensitive && (
+                          <button
+                            type="button"
+                            onClick={() => toggleFieldVisibility(key)}
+                            className="plasmo-absolute plasmo-right-2 plasmo-top-1/2 plasmo--translate-y-1/2 plasmo-text-gray-500 hover:plasmo-text-gray-700"
+                            aria-label={isVisible ? "Hide" : "Show"}>
+                            {isVisible ? (
+                              <EyeOff size={14} />
+                            ) : (
+                              <Eye size={14} />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   )
                 })}
               </div>
