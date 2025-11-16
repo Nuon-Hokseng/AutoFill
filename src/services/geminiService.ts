@@ -5,10 +5,22 @@ import { GoogleGenerativeAI } from "@google/generative-ai"
 const readStoredGeminiKey = async (): Promise<string | null> => {
   return new Promise((resolve) => {
     try {
+      // Check if chrome extension context is valid
+      if (!chrome?.runtime?.id) {
+        console.warn("Extension context invalid, cannot read API key")
+        resolve(null)
+        return
+      }
       chrome.storage.local.get("geminiApiKey", (res) => {
+        if (chrome.runtime.lastError) {
+          console.warn("Storage error:", chrome.runtime.lastError.message)
+          resolve(null)
+          return
+        }
         resolve((res.geminiApiKey as string | undefined) || null)
       })
     } catch (e) {
+      console.warn("Error reading API key:", e)
       resolve(null)
     }
   })
@@ -189,8 +201,8 @@ Example format:
   "zipcode": "10001",
   "postalcode": "10001",
   "country": "USA",
-  "homephone": "212-555-0100",
-  "workphone": "212-555-0101",
+  "homephone": "212-555-0100", make it valid base on different countries as well like cambodia +855
+  "workphone": "212-555-0101", make it valid base on different countries as well like cambodia +855
   "fax": "212-555-0102",
   "cellphone": "917-555-0100",
   "website": "https://johndoe.com",
@@ -286,7 +298,7 @@ Example format:
 // Simple cache system with single entry and 10 minute auto-refresh
 let cachedData: DummyUserData | null = null
 let cacheTimestamp: number = 0
-const CACHE_REFRESH_DURATION = 0 * 60 * 1000 // 10 minutes
+const CACHE_REFRESH_DURATION = 10 * 60 * 1000 // 10 minutes
 let refreshTimer: NodeJS.Timeout | null = null
 let isGenerating = false
 
