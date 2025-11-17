@@ -304,7 +304,7 @@ export async function generateDummyData(
 // Simple cache system with single entry and 10 minute auto-refresh
 let cachedData: DummyUserData | null = null
 let cacheTimestamp: number = 0
-const CACHE_REFRESH_DURATION = 1 * 60 * 1000 // 10 minutes
+const CACHE_REFRESH_DURATION = 10 * 60 * 1000 // 10 minutes
 let refreshTimer: NodeJS.Timeout | null = null
 let isGenerating = false
 
