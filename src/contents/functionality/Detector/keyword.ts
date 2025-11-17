@@ -75,7 +75,7 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
     "username",
     "user name",
     "user-name",
-    "user_name",
+    "user_name"
     // "user",
     // "login",
     // "login name",
@@ -417,11 +417,11 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
   fullname: [
     "full name",
     "fullname",
-    "name",
-    "your name",
     "complete name",
+    "completename",
     "name full",
-    "display name"
+    "full-name",
+    "full_name"
   ],
   company: [
     "company",

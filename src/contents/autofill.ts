@@ -397,6 +397,15 @@ async function fillCredentials(credentials: {
       }
     }
 
+    // Fill username FIRST to prevent firstname from taking username fields
+    if (usernameEl && credentials.username) {
+      const success = await fillUsername(usernameEl, credentials.username)
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["username"] = credentials.username
+      }
+    }
+
     if (firstnameEL && credentials.firstname) {
       const success = await fillFirstName(firstnameEL, credentials.firstname)
       if (success) {
@@ -426,14 +435,6 @@ async function fillCredentials(credentials: {
       if (success) {
         fieldsCount++
         filledFieldsTracker["fullname"] = credentials.fullname
-      }
-    }
-
-    if (usernameEl && credentials.username) {
-      const success = await fillUsername(usernameEl, credentials.username)
-      if (success) {
-        fieldsCount++
-        filledFieldsTracker["username"] = credentials.username
       }
     }
 

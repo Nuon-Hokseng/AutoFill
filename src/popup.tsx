@@ -267,7 +267,7 @@ export default function IndexPopup() {
                     )
                   }}
                   className="plasmo-p-1 plasmo-rounded plasmo-text-purple-600 hover:plasmo-bg-purple-100"
-                  title="Clear AI cache">
+                  title="Generate new set of Dummy Data">
                   <RefreshCw
                     size={14}
                     className={
