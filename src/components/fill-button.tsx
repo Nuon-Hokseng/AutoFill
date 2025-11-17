@@ -118,7 +118,8 @@ export const FillButton = ({
             className="plasmo-text-red-500 plasmo-flex plasmo-items-center plasmo-gap-2">
             <X className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse" />
             <span className="plasmo-text-sm plasmo-text-red-600">
-              Failed to generate AI data. Check API key.
+              Failed to generate AI data. Try refresh data or toggle AI mode off
+              and on below.
             </span>
           </span>
         )}

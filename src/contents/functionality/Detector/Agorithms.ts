@@ -158,6 +158,74 @@ export function detectFields(
       if (field === "password" && type === "password") scores[field] += 8
       if (field === "username" && (type === "text" || type === "search"))
         scores[field] += 1
+
+      // IMPORTANT: Prevent firstname/lastname from matching username-like fields
+      // If idName or placeholder contains "user" or "login", boost username and penalize firstname/lastname
+      const hasUsernameIndicators =
+        idName.includes("user") ||
+        idName.includes("login") ||
+        placeholderText.includes("user") ||
+        placeholderText.includes("login") ||
+        labelText.toLowerCase().includes("user") ||
+        labelText.toLowerCase().includes("login")
+
+      if (hasUsernameIndicators) {
+        if (field === "username") {
+          scores[field] += 5 // Boost username score
+        } else if (field === "firstname" || field === "lastname") {
+          scores[field] = Math.max(0, scores[field] - 8) // Strong penalty for firstname/lastname
+        }
+      }
+
+      // If field explicitly has "firstname" or "lastname" in identifiers, strongly boost those fields
+      const hasFirstnameIndicators =
+        idName.includes("firstname") ||
+        idName.includes("first-name") ||
+        idName.includes("first_name") ||
+        idName.includes("fname") ||
+        (placeholderText.includes("first") && !placeholderText.includes("full"))
+
+      const hasLastnameIndicators =
+        idName.includes("lastname") ||
+        idName.includes("last-name") ||
+        idName.includes("last_name") ||
+        idName.includes("lname") ||
+        (placeholderText.includes("last") && !placeholderText.includes("full"))
+
+      const hasFullnameIndicators =
+        idName.includes("fullname") ||
+        idName.includes("full-name") ||
+        idName.includes("full_name") ||
+        idName.includes("completename") ||
+        idName.includes("full name") ||
+        placeholderText.includes("full name") ||
+        labelText.toLowerCase().includes("full name")
+
+      if (hasFirstnameIndicators && field === "firstname") {
+        scores[field] += 15 // Very strong boost for firstname
+      }
+      if (hasLastnameIndicators && field === "lastname") {
+        scores[field] += 15 // Very strong boost for lastname
+      }
+      if (hasFullnameIndicators && field === "fullname") {
+        scores[field] += 12 // Strong boost for fullname
+      }
+
+      // Prevent fullname from taking firstname/lastname fields (very aggressive penalties)
+      if (hasFirstnameIndicators && field === "fullname") {
+        scores[field] = Math.max(0, scores[field] - 20) // Kill fullname score completely
+      }
+      if (hasLastnameIndicators && field === "fullname") {
+        scores[field] = Math.max(0, scores[field] - 20) // Kill fullname score completely
+      }
+
+      // Prevent firstname/lastname from taking fullname fields
+      if (hasFullnameIndicators && field === "firstname") {
+        scores[field] = Math.max(0, scores[field] - 15)
+      }
+      if (hasFullnameIndicators && field === "lastname") {
+        scores[field] = Math.max(0, scores[field] - 15)
+      }
     }
 
     detections.push({ input, scores })

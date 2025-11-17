@@ -224,6 +224,48 @@ try {
   // ignore observer errors on restricted pages
 }
 
+// Track filled fields for profile saving
+const filledFieldsTracker: Record<string, string> = {}
+
+// Function to notify popup to show save profile confirmation
+function notifyPopupSaveProfile(
+  filledFields: Record<string, string>,
+  filledCount: number,
+  totalCount: number
+): void {
+  console.log("🎯 Sending save profile request to popup", {
+    fieldsCount: Object.keys(filledFields).length,
+    fields: Object.keys(filledFields)
+  })
+
+  // Get current website info
+  const url = window.location.href
+  const website = new URL(url).hostname
+
+  // Send message to popup
+  chrome.runtime.sendMessage(
+    {
+      type: "SAVE_PROFILE_REQUEST",
+      data: {
+        website,
+        url,
+        filledFields,
+        filledCount,
+        totalCount
+      }
+    },
+    (response) => {
+      if (response?.received) {
+        console.log("✅ Save profile request received by popup")
+      } else {
+        console.log(
+          "⚠️ No response from popup - user may need to open the extension"
+        )
+      }
+    }
+  )
+}
+
 // Fill function: accepts credentials object
 async function fillCredentials(credentials: {
   email?: string
@@ -261,6 +303,11 @@ async function fillCredentials(credentials: {
   comments?: string
 }) {
   try {
+    // Clear previous tracking
+    Object.keys(filledFieldsTracker).forEach((key) => {
+      delete filledFieldsTracker[key]
+    })
+
     // Prefer a fresh detection pass (throttled) if available, otherwise fallback
     const detection = ensureFreshDetection() || detectCredentialFields()
 
@@ -344,42 +391,67 @@ async function fillCredentials(credentials: {
     // Fill fields using specialized functions
     if (titleEl && credentials.title) {
       const success = await fillTitle(titleEl, credentials.title)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["title"] = credentials.title
+      }
+    }
+
+    // Fill username FIRST to prevent firstname from taking username fields
+    if (usernameEl && credentials.username) {
+      const success = await fillUsername(usernameEl, credentials.username)
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["username"] = credentials.username
+      }
     }
 
     if (firstnameEL && credentials.firstname) {
       const success = await fillFirstName(firstnameEL, credentials.firstname)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["firstname"] = credentials.firstname
+      }
     }
 
     if (middlenameEl && credentials.middlename) {
       const success = await fillMiddleName(middlenameEl, credentials.middlename)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["middlename"] = credentials.middlename
+      }
     }
 
     if (lastnameEL && credentials.lastname) {
       const success = await fillLastName(lastnameEL, credentials.lastname)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["lastname"] = credentials.lastname
+      }
     }
 
     if (fullnameEl && credentials.fullname) {
       const success = await fillFullName(fullnameEl, credentials.fullname)
-      if (success) fieldsCount++
-    }
-
-    if (usernameEl && credentials.username) {
-      const success = await fillUsername(usernameEl, credentials.username)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["fullname"] = credentials.fullname
+      }
     }
 
     if (emailEl && credentials.email) {
       const success = await fillEmail(emailEl, credentials.email)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["email"] = credentials.email
+      }
     }
 
     if (passwordEl && credentials.password) {
       const success = await fillPassword(passwordEl, credentials.password)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["password"] = credentials.password
+      }
     }
 
     if (confirmPasswordEl && credentials.password) {
@@ -394,55 +466,85 @@ async function fillCredentials(credentials: {
 
     if (credentials.gender && genderRadios) {
       const success = await fillGender(genderRadios, credentials.gender)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["gender"] = credentials.gender
+      }
     }
 
     if (dobSelect && credentials.dob) {
       const success = await fillDOB(dobSelect, credentials.dob)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["dob"] = credentials.dob
+      }
     }
 
     // Company/Work fields
     if (companyEl && credentials.company) {
       const success = await fillCompany(companyEl, credentials.company)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["company"] = credentials.company
+      }
     }
 
     if (positionEl && credentials.position) {
       const success = await fillPosition(positionEl, credentials.position)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["position"] = credentials.position
+      }
     }
 
     // Address fields
     if (address1El && credentials.address1) {
       const success = await fillAddressLine(address1El, credentials.address1)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["address1"] = credentials.address1
+      }
     }
 
     if (address2El && credentials.address2) {
       const success = await fillAddressLine(address2El, credentials.address2)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["address2"] = credentials.address2
+      }
     }
 
     // City/State/Zipcode/Country fields
     if (cityEl && credentials.city) {
       const success = await genericFill(cityEl, credentials.city)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["city"] = credentials.city
+      }
     }
 
     if (stateEl && credentials.state) {
       const success = await genericFill(stateEl, credentials.state)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["state"] = credentials.state
+      }
     }
 
     if (zipcodeEl && credentials.zipcode) {
       const success = await genericFill(zipcodeEl, credentials.zipcode)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["zipcode"] = credentials.zipcode
+      }
     }
 
     if (countryEl && credentials.country) {
       const success = await genericFill(countryEl, credentials.country)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["country"] = credentials.country
+      }
     }
 
     // Phone fields
@@ -452,27 +554,40 @@ async function fillCredentials(credentials: {
       const success = await fillPhoneField(phoneEl, phoneValue)
       if (success) {
         fieldsCount++
+        filledFieldsTracker["phone"] = phoneValue
       }
     }
 
     if (homephoneEl && credentials.homephone) {
       const success = await fillPhoneField(homephoneEl, credentials.homephone)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["homephone"] = credentials.homephone
+      }
     }
 
     if (workphoneEl && credentials.workphone) {
       const success = await fillPhoneField(workphoneEl, credentials.workphone)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["workphone"] = credentials.workphone
+      }
     }
 
     if (faxEl && credentials.fax) {
       const success = await fillPhoneField(faxEl, credentials.fax)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["fax"] = credentials.fax
+      }
     }
 
     if (cellphoneEl && credentials.cellphone) {
       const success = await fillPhoneField(cellphoneEl, credentials.cellphone)
-      if (success) fieldsCount++
+      if (success) {
+        fieldsCount++
+        filledFieldsTracker["cellphone"] = credentials.cellphone
+      }
     }
 
     // Web fields
@@ -550,6 +665,28 @@ async function fillCredentials(credentials: {
         }
       })
     }, 200)
+
+    // Show save profile modal if fields were filled
+    const actualFilledCount = Object.keys(filledFieldsTracker).length
+    console.log("📊 Autofill complete:", {
+      fieldsCount,
+      actualFilledCount,
+      fields: Object.keys(filledFieldsTracker)
+    })
+
+    if (actualFilledCount > 0) {
+      console.log("✅ Condition met, will notify popup in 500ms...")
+      setTimeout(() => {
+        console.log("⏰ Timeout complete, notifying popup...")
+        notifyPopupSaveProfile(
+          filledFieldsTracker,
+          actualFilledCount,
+          actualFilledCount
+        )
+      }, 500)
+    } else {
+      console.log("❌ No fields tracked for profile saving")
+    }
 
     return { filled: fieldsCount, total: totalDetected }
   } catch (error) {
