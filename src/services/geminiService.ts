@@ -1,46 +1,10 @@
-// Service for generating dummy data using Gemini API
-import { GoogleGenerativeAI } from "@google/generative-ai"
+// Service for generating dummy data via backend API
 
-// Local helper to read key from storage to avoid circular deps
-const readStoredGeminiKey = async (): Promise<string | null> => {
-  return new Promise((resolve) => {
-    try {
-      // Check if chrome extension context is valid
-      if (!chrome?.runtime?.id) {
-        console.warn("Extension context invalid, cannot read API key")
-        resolve(null)
-        return
-      }
-      chrome.storage.local.get("geminiApiKey", (res) => {
-        if (chrome.runtime.lastError) {
-          console.warn("Storage error:", chrome.runtime.lastError.message)
-          resolve(null)
-          return
-        }
-        resolve((res.geminiApiKey as string | undefined) || null)
-      })
-    } catch (e) {
-      console.warn("Error reading API key:", e)
-      resolve(null)
-    }
-  })
-}
+// Backend endpoint base
+const BACKEND_BASE_URL = "https://autofill-backend-whgy.onrender.com"
+const GENERATE_ENDPOINT = `${BACKEND_BASE_URL}/generate`
 
-// Initialize Gemini AI (prefers runtime key from storage, falls back to env)
-const getGeminiClient = async () => {
-  const storedKey = await readStoredGeminiKey()
-  const envKey = process.env.PLASMO_PUBLIC_GEMINI_API
-  const apiKey = storedKey || envKey
-  if (!apiKey) {
-    console.error(
-      "Gemini API key not found. Set it in Settings or set PLASMO_PUBLIC_GEMINI_API in .env"
-    )
-    return null
-  }
-  return new GoogleGenerativeAI(apiKey)
-}
-
-export interface DummyUserData {
+export interface AutofillData {
   // Basic Info
   title?: string
   firstname: string
@@ -100,205 +64,247 @@ export interface DummyUserData {
   comments?: string
 }
 
+// Backwards-compatible alias for existing imports/usages
+export type DummyUserData = AutofillData
+
 // Helper function to delay/wait
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-// Single generation function with retry logic
+// Normalize backend output: accept alternate keys and coerce primitives to strings
+const normalizeAutofill = (input: any): AutofillData | null => {
+  if (!input || typeof input !== "object") return null
+
+  const val = (v: any): string | undefined => {
+    if (v === undefined || v === null) return undefined
+    // Coerce numbers/booleans to strings; trim strings
+    const s = String(v)
+    return s
+  }
+
+  const pick = (...keys: string[]) => {
+    for (const k of keys) {
+      if (k in input) return input[k]
+    }
+    return undefined
+  }
+
+  const data: AutofillData = {
+    // Basic
+    title: val(pick("title")),
+    firstname:
+      val(pick("firstname", "firstName", "first_name", "given_name")) || "",
+    middlename: val(pick("middlename", "middleName", "middle_name")),
+    middleinitial: val(
+      pick("middleinitial", "middleInitial", "middle_initial")
+    ),
+    lastname:
+      val(pick("lastname", "lastName", "last_name", "family_name")) || "",
+    fullname: val(pick("fullname", "fullName", "full_name")),
+
+    // Account
+    email: val(pick("email", "emailAddress", "email_address")) || "",
+    username:
+      val(pick("username", "userName", "user_name", "userid", "userId")) || "",
+    password: val(pick("password", "pass", "pwd")) || "",
+
+    // Personal
+    gender: val(pick("gender", "sex")) || "",
+    dob: val(pick("dob", "dateOfBirth", "birth_date", "birthDate")) || "",
+    age: val(pick("age")),
+    birthplace: val(pick("birthplace", "birth_place", "birthPlace")),
+    ssn: val(pick("ssn", "social", "social_security")),
+    driverslicense: val(
+      pick("driverslicense", "driverLicense", "driver_license")
+    ),
+
+    // Company
+    company: val(pick("company")),
+    position: val(pick("position", "job", "job_title", "jobTitle")),
+
+    // Address
+    address1: val(pick("address1", "address_1", "street", "street1")),
+    address2: val(pick("address2", "address_2", "apt", "suite", "street2")),
+    city: val(pick("city")),
+    state: val(pick("state", "province", "region")),
+    zipcode: val(pick("zipcode", "zip", "zip_code")),
+    postalcode: val(pick("postalcode", "postal", "postal_code")),
+    country: val(pick("country")),
+
+    // Phones
+    homephone: val(pick("homephone", "home_phone")),
+    workphone: val(pick("workphone", "work_phone")),
+    fax: val(pick("fax")),
+    cellphone: val(
+      pick("cellphone", "cell_phone", "phone", "phone_number", "phoneNumber")
+    ),
+
+    // Web
+    website: val(pick("website", "url")),
+    userid: val(pick("userid", "userId")),
+
+    // Payment
+    creditcardtype: val(pick("creditcardtype", "card_type", "cardType")),
+    creditcardnumber: val(
+      pick("creditcardnumber", "card_number", "cardNumber")
+    ),
+    cardverificationcode: val(
+      pick("cardverificationcode", "cvv", "cvc", "card_verification_code")
+    ),
+    cardexpiration: val(
+      pick("cardexpiration", "card_expiration", "expiry", "expiration")
+    ),
+    cardusername: val(pick("cardusername", "card_name", "name_on_card")),
+    cardissuingbank: val(pick("cardissuingbank", "issuing_bank")),
+    cardcustomerservicephone: val(
+      pick(
+        "cardcustomerservicephone",
+        "customer_service",
+        "customer_service_phone"
+      )
+    ),
+
+    // Other
+    income: val(pick("income", "annual_income")),
+    custommessage: val(pick("custommessage", "message")),
+    comments: val(pick("comments", "note", "notes"))
+  }
+
+  // Validate required after normalization
+  const required: (keyof AutofillData)[] = [
+    "firstname",
+    "lastname",
+    "username",
+    "email",
+    "password",
+    "gender",
+    "dob"
+  ]
+  const ok = required.every(
+    (k) => typeof data[k] === "string" && (data[k] as string).length > 0
+  )
+  if (!ok) {
+    const missing = required.filter(
+      (k) => !data[k] || (data[k] as string).length === 0
+    )
+    console.error("❌ Validation failed. Missing required fields:", missing)
+    console.log(
+      "🔍 Normalized data sample:",
+      JSON.stringify(data).slice(0, 300)
+    )
+  }
+  return ok ? data : null
+}
+
+// 1) Fetch from backend API and return parsed output
+export async function fetchAutofillData(): Promise<AutofillData | null> {
+  try {
+    // Read optional backend API key from storage (and env as fallback)
+    const backendKey = await new Promise<string | null>((resolve) => {
+      try {
+        if (!chrome?.runtime?.id) return resolve(null)
+        chrome.storage.local.get(["backendApiKey", "geminiApiKey"], (res) => {
+          resolve(
+            (res.backendApiKey as string | undefined) ||
+              (res.geminiApiKey as string | undefined) ||
+              null
+          )
+        })
+      } catch {
+        resolve(null)
+      }
+    })
+    const envKey = process.env.PLASMO_PUBLIC_BACKEND_API_KEY || null
+    const apiKey = backendKey || envKey
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000)
+
+    const res = await fetch(GENERATE_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(apiKey
+          ? {
+              Authorization: `Bearer ${apiKey}`,
+              "x-api-key": apiKey
+            }
+          : {})
+      },
+      // Body can be extended later to pass preferences
+      body: JSON.stringify({}),
+      signal: controller.signal
+    })
+
+    clearTimeout(timeout)
+
+    if (!res.ok) {
+      console.error("Backend responded with non-OK status:", res.status)
+      return null
+    }
+
+    const json = (await res.json()) as any
+    const raw =
+      json && typeof json === "object" && "output" in json ? json.output : json
+
+    console.log("📥 Backend response received:", {
+      hasOutput: !!json?.output,
+      sampleKeys:
+        raw && typeof raw === "object" ? Object.keys(raw).slice(0, 10) : []
+    })
+
+    const normalized = normalizeAutofill(raw)
+    if (!normalized) {
+      try {
+        const keys = raw && typeof raw === "object" ? Object.keys(raw) : []
+        console.error("❌ Invalid or missing fields in backend response", {
+          keys,
+          sample: JSON.stringify(raw)?.slice(0, 200)
+        })
+      } catch {
+        console.error("❌ Invalid or missing fields in backend response")
+      }
+    } else {
+      console.log("✅ Backend data normalized successfully")
+    }
+    return normalized || null
+  } catch (err: any) {
+    if (err?.name === "AbortError") {
+      console.error("Backend request timed out")
+    } else {
+      console.error("Failed to fetch autofill data:", err?.message || err)
+    }
+    return null
+  }
+}
+
+// Single generation function with retry logic (now using backend only)
 export async function generateDummyData(
   retryCount: number = 0
 ): Promise<DummyUserData | null> {
-  const genAI = await getGeminiClient()
-
-  if (!genAI) {
-    console.error("Failed to initialize Gemini client - API key missing")
-    return null
-  }
-
-  const prompt = `
-Generate a random but realistic dummy user information in JSON format.
-The data should be realistic and varied each time.
-
-Required fields (must be present):
-- title (Mr, Mrs, Ms, Dr, etc.)
-- firstname (realistic first name)
-- middlename (realistic middle name)
-- middleinitial (single letter middle initial)
-- lastname (realistic last name)
-- fullname (complete name: firstname middlename lastname)
-- username (lowercase, 8-12 characters, can include numbers)
-- email (valid email format)
-- password (strong password, 12-16 characters with mix of letters, numbers, symbols - no "password" word, just random words/symbols/numbers)
-- gender (exactly "1" for Female or "2" for Male)
-- dob (date of birth in DD-MM-YYYY format, person should be between 18-60 years old)
-- age (calculated from dob)
-- birthplace (city, country)
-- ssn (format: XXX-XX-XXXX)
-- driverslicense (format: realistic license number)
-
-Company/Work fields:
-- company (company name)
-- position (job title/position)
-
-Address fields:
-- address1 (street address)
-- address2 (apt/suite number, can be empty)
-- city (city name)
-- state (state/province)
-- zipcode (5 digit US zipcode)
-- postalcode (5 digit postal code, same as zipcode)
-- country (country name)
-
-Phone fields:
-- homephone (format: XXX-XXX-XXXX)
-- workphone (format: XXX-XXX-XXXX)
-- fax (format: XXX-XXX-XXXX)
-- cellphone (format: XXX-XXX-XXXX)
-
-Web fields:
-- website (personal website URL)
-- userid (unique ID, can be same as username)
-
-Payment fields:
-- creditcardtype (Visa, Mastercard, Amex, etc.)
-- creditcardnumber (16 digit card number)
-- cardverificationcode (3 digit CVV)
-- cardexpiration (MM/YY format)
-- cardusername (name on card, same as fullname)
-- cardissuingbank (bank name)
-- cardcustomerservicephone (format: XXX-XXX-XXXX)
-
-Additional fields:
-- income (annual income amount like "75000")
-- custommessage (short personal message)
-- comments (brief comment or note)
-
-Make the names, locations international and diverse (not only USA/English names - include Asian, African, European, etc.)
-
-Return ONLY valid JSON, no markdown formatting, no explanations.
-Example format:
-{
-  "title": "Mr",
-  "firstname": "John",
-  "middlename": "Michael",
-  "middleinitial": "M",
-  "lastname": "Doe",
-  "fullname": "John Michael Doe",
-  "username": "johndoe123",
-  "email": "john.doe@example.com",
-  "password": "SecurePass123!@",
-  "gender": "2",
-  "dob": "15-03-1990",
-  "age": "34",
-  "birthplace": "New York, USA",
-  "ssn": "123-45-6789",
-  "driverslicense": "D1234567",
-  "company": "Tech Corp",
-  "position": "Software Engineer",
-  "address1": "123 Main Street",
-  "address2": "Apt 4B",
-  "city": "New York",
-  "state": "NY",
-  "zipcode": "10001",
-  "postalcode": "10001",
-  "country": "USA",
-  "homephone": "212-555-0100", make it valid base on different countries as well like cambodia +855
-  "workphone": "212-555-0101", make it valid base on different countries as well like cambodia +855
-  "fax": "212-555-0102",
-  "cellphone": "917-555-0100",
-  "website": "https://johndoe.com",
-  "userid": "johndoe123",
-  "creditcardtype": "Visa",
-  "creditcardnumber": "4532123456789012",
-  "cardverificationcode": "123",
-  "cardexpiration": "12/28",
-  "cardusername": "John Michael Doe",
-  "cardissuingbank": "Chase Bank",
-  "cardcustomerservicephone": "800-555-0199",
-  "income": "85000",
-  "custommessage": "Hello world!",
-  "comments": "Test user account"
-}
-`
-
-  // Use only gemini-2.0-flash-exp as specified
-  const modelName = "gemini-2.5-pro"
   const maxRetries = 3
 
-  // Helper to clean and parse JSON from model response
-  const tryParseJson = (text: string): DummyUserData | null => {
-    try {
-      // Remove markdown fences if any
-      const cleaned = text
-        .trim()
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/```\s*$/i, "")
-        .trim()
-      const parsed = JSON.parse(cleaned)
-      return parsed as DummyUserData
-    } catch (e) {
-      console.error("JSON parse error:", e)
-      console.error("Raw response:", text.substring(0, 200))
-      return null
-    }
-  }
-
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(
-        `🤖 Calling Gemini ${modelName} (attempt ${attempt + 1}/${maxRetries + 1})...`
-      )
-      const model = genAI.getGenerativeModel({ model: modelName })
-      const result = await model.generateContent(prompt)
-      const response = result.response
-
-      // Check for safety blocks or other issues
-      if (!response) {
-        console.error("❌ No response from Gemini API")
-        continue
-      }
-
-      const text = response.text()
-      console.log(`✅ Got response from Gemini (${text.length} chars)`)
-
-      const json = tryParseJson(text)
-      if (json) {
-        console.log("✅ Successfully parsed JSON data")
-        return json
-      }
-      console.warn(
-        `⚠️ Model returned non-JSON response on attempt ${attempt + 1}`
-      )
-    } catch (error: any) {
-      console.error(
-        `❌ Gemini call failed (attempt ${attempt + 1}/${maxRetries + 1}):`,
-        error?.message || error
-      )
-      // Log additional error details if available
-      if (error?.response) {
-        console.error("Error response:", error.response)
-      }
-      if (error?.status) {
-        console.error("Error status:", error.status)
-      }
+    const data = await fetchAutofillData()
+    if (data) {
+      console.log("✅ Successfully fetched autofill data from backend")
+      return data
     }
 
-    // Backoff before retrying
     if (attempt < maxRetries) {
       const delayMs = 1000 * (attempt + 1)
-      console.log(`⏳ Waiting ${delayMs}ms before retry...`)
+      console.log(`⏳ Backend fetch failed, retrying in ${delayMs}ms...`)
       await delay(delayMs)
     }
   }
 
-  console.error("❌ All generation attempts failed")
+  console.error("❌ All backend fetch attempts failed")
   return null
 }
 
 // Simple cache system with single entry and 10 minute auto-refresh
 let cachedData: DummyUserData | null = null
 let cacheTimestamp: number = 0
-const CACHE_REFRESH_DURATION = 10 * 60 * 1000 // 10 minutes
+const CACHE_REFRESH_DURATION = 1 * 60 * 1000 // 10 minutes
 let refreshTimer: NodeJS.Timeout | null = null
 let isGenerating = false
 

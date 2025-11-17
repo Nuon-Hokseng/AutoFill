@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   CreditCard,
   Globe,
+  RefreshCw,
   Settings,
   Trash2,
   User,
@@ -31,6 +32,7 @@ export default function IndexPopup() {
   const [aiModeEnabled, setAiModeEnabled] = useState(true)
   const [apiKey, setApiKey] = useState("")
   const [hasApiKey, setHasApiKey] = useState(false)
+  const [cacheStatus, setCacheStatus] = useState<string | null>(null)
 
   // Load AI mode setting on mount
   useEffect(() => {
@@ -82,8 +84,7 @@ export default function IndexPopup() {
               </h2>
             </div>
             <p className="plasmo-text-sm plasmo-text-gray-600 plasmo-leading-relaxed">
-              HClick the button to auto-fill your credentials into focused
-              fields
+              Click the button to auto-fill your credentials into focused fields
             </p>
           </div>
 
@@ -140,19 +141,47 @@ export default function IndexPopup() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={toggleAIMode}
-                className={`plasmo-relative plasmo-w-11 plasmo-h-6 plasmo-rounded-full plasmo-transition-colors plasmo-duration-200 ${
-                  aiModeEnabled ? "plasmo-bg-purple-600" : "plasmo-bg-gray-300"
-                }`}>
-                <div
-                  className={`plasmo-absolute plasmo-top-0.5 plasmo-left-0.5 plasmo-w-5 plasmo-h-5 plasmo-bg-white plasmo-rounded-full plasmo-transition-transform plasmo-duration-200 ${
+              <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+                <button
+                  onClick={() => {
+                    chrome.runtime.sendMessage(
+                      { type: "CLEAR_AI_CACHE" },
+                      (res?: { success?: boolean }) => {
+                        if (res?.success) {
+                          setCacheStatus("cleared")
+                          setTimeout(() => setCacheStatus(null), 2000)
+                        } else {
+                          setCacheStatus("error")
+                          setTimeout(() => setCacheStatus(null), 2000)
+                        }
+                      }
+                    )
+                  }}
+                  className="plasmo-p-1 plasmo-rounded plasmo-text-purple-600 hover:plasmo-bg-purple-100"
+                  title="Clear AI cache">
+                  <RefreshCw
+                    size={14}
+                    className={
+                      cacheStatus === "cleared" ? "plasmo-animate-spin" : ""
+                    }
+                  />
+                </button>
+                <button
+                  onClick={toggleAIMode}
+                  className={`plasmo-relative plasmo-w-11 plasmo-h-6 plasmo-rounded-full plasmo-transition-colors plasmo-duration-200 ${
                     aiModeEnabled
-                      ? "plasmo-translate-x-5"
-                      : "plasmo-translate-x-0"
-                  }`}
-                />
-              </button>
+                      ? "plasmo-bg-purple-600"
+                      : "plasmo-bg-gray-300"
+                  }`}>
+                  <div
+                    className={`plasmo-absolute plasmo-top-0.5 plasmo-left-0.5 plasmo-w-5 plasmo-h-5 plasmo-bg-white plasmo-rounded-full plasmo-transition-transform plasmo-duration-200 ${
+                      aiModeEnabled
+                        ? "plasmo-translate-x-5"
+                        : "plasmo-translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
           <div className="plasmo-flex plasmo-gap-2 plasmo-pt-2 plasmo-border-t plasmo-border-gray-200">

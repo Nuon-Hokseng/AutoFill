@@ -1,5 +1,5 @@
 // Background script to show messages between popup and content scripts
-import { hasCachedData, preloadData } from "~services/geminiService"
+import { clearCache, hasCachedData, preloadData } from "~services/geminiService"
 import { getAIMode, getAutofillData } from "~services/storageService"
 
 console.log("Background script loaded")
@@ -50,6 +50,20 @@ chrome.runtime.onConnect.addListener(async (port) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("Background received message:", message)
 
+  if (message.type === "CLEAR_AI_CACHE") {
+    try {
+      clearCache()
+      console.log("🗑️ Cache cleared, triggering preload...")
+      // Immediately preload fresh data after clearing
+      preloadData()
+      sendResponse({ success: true })
+    } catch (e: any) {
+      console.error("Failed to clear AI cache:", e?.message || e)
+      sendResponse({ success: false, error: e?.message || String(e) })
+    }
+    return true
+  }
+
   if (message.type === "TRIGGER_AUTOFILL") {
     // Get autofill data (custom or generated)
     getAutofillData()
@@ -57,7 +71,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!data) {
           const aiEnabled = await getAIMode()
           const errorMsg = aiEnabled
-            ? "Failed to generate AI data. Please check your API key or try again."
+            ? "Failed to fetch dummy data from backend. Please try again."
             : "No custom data found. Please add custom credentials or enable AI mode."
 
           console.error("❌ No autofill data available:", errorMsg)

@@ -14,6 +14,8 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
+// Use background messaging to clear AI cache to ensure background memory is reset
+
 import React = require("react")
 
 const initialFormState = {
