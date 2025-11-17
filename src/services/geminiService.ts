@@ -433,7 +433,6 @@ export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
 
   // If still no data after initialization attempt, return null
   if (!cachedData) {
-    console.error("❌ No cached data available")
     return null
   }
 
