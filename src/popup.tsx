@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   CreditCard,
+  FileText,
   Globe,
   RefreshCw,
   Settings,
@@ -12,6 +13,7 @@ import { useEffect, useState } from "react"
 
 import CustomTab from "~components/custom-tab"
 import { FillButton } from "~components/fill-button"
+import ProfileTab from "~components/profile-tab"
 import {
   clearGeminiApiKey,
   getGeminiApiKey,
@@ -22,7 +24,15 @@ import "~style.css"
 
 import React = require("react")
 
-type View = "main" | "settings" | "custom"
+type View = "main" | "settings" | "custom" | "profile"
+
+interface SaveProfileRequest {
+  website: string
+  url: string
+  filledFields: Record<string, string>
+  filledCount: number
+  totalCount: number
+}
 
 export default function IndexPopup() {
   const [currentView, setCurrentView] = useState<View>("main")
@@ -33,6 +43,8 @@ export default function IndexPopup() {
   const [apiKey, setApiKey] = useState("")
   const [hasApiKey, setHasApiKey] = useState(false)
   const [cacheStatus, setCacheStatus] = useState<string | null>(null)
+  const [saveProfileRequest, setSaveProfileRequest] =
+    useState<SaveProfileRequest | null>(null)
 
   // Load AI mode setting on mount
   useEffect(() => {
@@ -60,8 +72,62 @@ export default function IndexPopup() {
     return () => port.disconnect()
   }, [])
 
+  // Listen for save profile requests
+  useEffect(() => {
+    const handleMessage = (
+      message: any,
+      sender: chrome.runtime.MessageSender,
+      sendResponse: (response?: any) => void
+    ) => {
+      if (message.type === "SAVE_PROFILE_REQUEST") {
+        setSaveProfileRequest(message.data)
+        sendResponse({ received: true })
+      }
+    }
+
+    chrome.runtime.onMessage.addListener(handleMessage)
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage)
+    }
+  }, [])
+
+  // Handle save profile
+  const handleSaveProfile = () => {
+    if (!saveProfileRequest) return
+
+    console.log("💾 Saving profile request:", saveProfileRequest)
+    console.log("📝 Filled fields to save:", saveProfileRequest.filledFields)
+
+    chrome.storage.local.get("websiteProfiles", (result) => {
+      const profiles = result.websiteProfiles || []
+      const newProfile = {
+        id: Date.now().toString(),
+        website: saveProfileRequest.website,
+        url: saveProfileRequest.url,
+        timestamp: Date.now(),
+        data: saveProfileRequest.filledFields,
+        filledFields: Object.keys(saveProfileRequest.filledFields)
+      }
+      profiles.push(newProfile)
+      chrome.storage.local.set({ websiteProfiles: profiles }, () => {
+        console.log("✅ Profile saved successfully", newProfile)
+        console.log("🔍 Saved profile data:", newProfile.data)
+        setSaveProfileRequest(null)
+      })
+    })
+  }
+
+  // Handle dismiss profile request
+  const handleDismissProfile = () => {
+    setSaveProfileRequest(null)
+  }
+
   if (currentView === "custom") {
     return <CustomTab goBack={() => setCurrentView("main")} />
+  }
+
+  if (currentView === "profile") {
+    return <ProfileTab goBack={() => setCurrentView("main")} />
   }
 
   const IconBox = ({ children }: { children: React.ReactNode }) => (
@@ -74,6 +140,49 @@ export default function IndexPopup() {
     <div className="plasmo-w-80 plasmo-bg-white plasmo-rounded-lg plasmo-shadow-2xl plasmo-border plasmo-border-gray-200 plasmo-overflow-hidden">
       {currentView === "main" && (
         <div className="plasmo-p-4 plasmo-space-y-4">
+          {/* Save Profile Notification */}
+          {saveProfileRequest && (
+            <div className="plasmo-bg-gradient-to-r plasmo-from-blue-50 plasmo-to-indigo-50 plasmo-border-2 plasmo-border-blue-300 plasmo-rounded-xl plasmo-p-4 plasmo-shadow-lg plasmo-animate-in plasmo-slide-in-from-top">
+              <div className="plasmo-flex plasmo-items-start plasmo-gap-3 plasmo-mb-3">
+                <div className="plasmo-w-10 plasmo-h-10 plasmo-rounded-full plasmo-bg-blue-500 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-flex-shrink-0 plasmo-shadow-md">
+                  <FileText className="plasmo-w-5 plasmo-h-5 plasmo-text-white" />
+                </div>
+                <div className="plasmo-flex-1">
+                  <h3 className="plasmo-text-base plasmo-font-bold plasmo-text-gray-900 plasmo-mb-1">
+                    Save Profile?
+                  </h3>
+                  <p className="plasmo-text-sm plasmo-text-gray-700 plasmo-leading-relaxed">
+                    Successfully filled{" "}
+                    <span className="plasmo-font-semibold plasmo-text-blue-700">
+                      {saveProfileRequest.filledCount} field
+                      {saveProfileRequest.filledCount !== 1 ? "s" : ""}
+                    </span>{" "}
+                    on {saveProfileRequest.website}
+                  </p>
+                  <div className="plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-mt-2">
+                    <div className="plasmo-flex plasmo-items-center plasmo-gap-1 plasmo-px-2 plasmo-py-1 plasmo-bg-white plasmo-rounded-full plasmo-text-xs plasmo-font-medium plasmo-text-gray-600 plasmo-shadow-sm">
+                      <span className="plasmo-w-2 plasmo-h-2 plasmo-rounded-full plasmo-bg-green-500"></span>
+                      {Object.keys(saveProfileRequest.filledFields).length}{" "}
+                      fields tracked
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="plasmo-flex plasmo-gap-2">
+                <button
+                  onClick={handleDismissProfile}
+                  className="plasmo-flex-1 plasmo-px-4 plasmo-py-2 plasmo-bg-white plasmo-text-gray-700 plasmo-rounded-lg plasmo-font-medium plasmo-hover:bg-gray-50 plasmo-transition-all plasmo-border plasmo-border-gray-300 plasmo-shadow-sm">
+                  Not Now
+                </button>
+                <button
+                  onClick={handleSaveProfile}
+                  className="plasmo-flex-1 plasmo-px-4 plasmo-py-2 plasmo-bg-blue-600 plasmo-text-white plasmo-rounded-lg plasmo-font-medium plasmo-hover:bg-blue-700 plasmo-transition-all plasmo-shadow-md plasmo-hover:shadow-lg">
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="plasmo-text-center plasmo-space-y-2">
             <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2 plasmo-mb-2">
               <IconBox>
@@ -184,18 +293,24 @@ export default function IndexPopup() {
               </div>
             </div>
           </div>
-          <div className="plasmo-flex plasmo-gap-2 plasmo-pt-2 plasmo-border-t plasmo-border-gray-200">
+          <div className="plasmo-grid plasmo-grid-cols-3 plasmo-gap-2 plasmo-pt-2 plasmo-border-t plasmo-border-gray-200">
             <button
               onClick={() => setCurrentView("settings")}
-              className="plasmo-flex-1 plasmo-text-gray-600 plasmo-hover:text-gray-800 plasmo-hover:bg-gray-100 plasmo-py-2 plasmo-rounded plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2">
+              className="plasmo-text-gray-600 plasmo-hover:text-gray-800 plasmo-hover:bg-gray-100 plasmo-py-2 plasmo-rounded plasmo-flex plasmo-flex-col plasmo-items-center plasmo-justify-center plasmo-gap-1">
               <Settings className="plasmo-w-4 plasmo-h-4" />
-              Settings
+              <span className="plasmo-text-xs">Settings</span>
+            </button>
+            <button
+              onClick={() => setCurrentView("profile")}
+              className="plasmo-text-gray-600 plasmo-hover:text-gray-800 plasmo-hover:bg-gray-100 plasmo-py-2 plasmo-rounded plasmo-flex plasmo-flex-col plasmo-items-center plasmo-justify-center plasmo-gap-1">
+              <FileText className="plasmo-w-4 plasmo-h-4" />
+              <span className="plasmo-text-xs">Profile</span>
             </button>
             <button
               onClick={() => setCurrentView("custom")}
-              className="plasmo-flex-1 plasmo-text-gray-600 plasmo-hover:text-gray-800 plasmo-hover:bg-gray-100 plasmo-py-2 plasmo-rounded plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2">
+              className="plasmo-text-gray-600 plasmo-hover:text-gray-800 plasmo-hover:bg-gray-100 plasmo-py-2 plasmo-rounded plasmo-flex plasmo-flex-col plasmo-items-center plasmo-justify-center plasmo-gap-1">
               <User className="plasmo-w-4 plasmo-h-4" />
-              Custom
+              <span className="plasmo-text-xs">Custom</span>
             </button>
           </div>
         </div>

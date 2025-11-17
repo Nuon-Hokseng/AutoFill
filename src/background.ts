@@ -65,6 +65,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "TRIGGER_AUTOFILL") {
+    // Check if profile data is provided
+    if (message.useProfileData) {
+      console.log("📤 Using profile data for autofill")
+      console.log("🔍 Profile data received:", message.useProfileData)
+      console.log("📋 Profile data keys:", Object.keys(message.useProfileData))
+
+      // Send profile data directly to content script
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]?.id) {
+          chrome.tabs.sendMessage(
+            tabs[0].id,
+            {
+              type: "AUTOFILL_CREDENTIALS",
+              data: message.useProfileData,
+              source: "profile"
+            },
+            (response) => {
+              console.log("Content script response:", response)
+              sendResponse({
+                ...(response || { success: false }),
+                source: "profile"
+              })
+            }
+          )
+        } else {
+          sendResponse({ success: false, error: "No active tab found" })
+        }
+      })
+
+      return true
+    }
+
     // Get autofill data (custom or generated)
     getAutofillData()
       .then(async ({ data, source }) => {
