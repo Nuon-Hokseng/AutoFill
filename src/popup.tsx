@@ -215,75 +215,6 @@ export default function IndexPopup() {
           </div>
 
           <div className="plasmo-space-y-4">
-            {/* Gemini API Key */}
-            <div className="plasmo-space-y-2 plasmo-p-3 plasmo-border plasmo-border-gray-200 plasmo-rounded-lg">
-              <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
-                <div>
-                  <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
-                    Gemini API Key
-                  </div>
-                  <p className="plasmo-text-xs plasmo-text-gray-500">
-                    {hasApiKey ? "Key is set (stored locally)" : "No key saved"}
-                  </p>
-                </div>
-              </div>
-              <div className="plasmo-flex plasmo-gap-2">
-                <input
-                  type="password"
-                  placeholder="Paste API key"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="plasmo-flex-1 plasmo-text-sm plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-rounded"
-                />
-                <button
-                  onClick={async () => {
-                    if (!apiKey.trim()) return
-                    const res = await setGeminiApiKey(apiKey.trim())
-                    if (res.success) {
-                      setHasApiKey(true)
-                      setApiKey("")
-                    }
-                  }}
-                  className="plasmo-text-sm plasmo-px-3 plasmo-py-1 plasmo-bg-blue-600 plasmo-text-white plasmo-rounded">
-                  Save
-                </button>
-                <button
-                  onClick={async () => {
-                    const res = await clearGeminiApiKey()
-                    if (res.success) {
-                      setHasApiKey(false)
-                    }
-                  }}
-                  className="plasmo-text-sm plasmo-px-3 plasmo-py-1 plasmo-bg-gray-100 plasmo-text-gray-800 plasmo-rounded">
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-py-2">
-              <div>
-                <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
-                  Auto Fill Enabled
-                </div>
-                <p className="plasmo-text-xs plasmo-text-gray-500">
-                  Enable automatic form filling
-                </p>
-              </div>
-              <input type="checkbox" defaultChecked />
-            </div>
-
-            <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-py-2">
-              <div>
-                <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
-                  Smart Detection
-                </div>
-                <p className="plasmo-text-xs plasmo-text-gray-500">
-                  Automatically detect form fields
-                </p>
-              </div>
-              <input type="checkbox" defaultValue={0} />
-            </div>
-
             <div className="plasmo-space-y-2 plasmo-pt-4 plasmo-border-t plasmo-border-gray-200">
               <button
                 onClick={() => chrome.runtime.openOptionsPage()}
@@ -294,10 +225,6 @@ export default function IndexPopup() {
               <button className="plasmo-justify-center plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-flex plasmo-items-center plasmo-gap-2">
                 <CreditCard className="plasmo-w-4 plasmo-h-4" />
                 Payment Info
-              </button>
-              <button className="plasmo-justify-center plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-text-red-600 plasmo-flex plasmo-items-center plasmo-gap-2">
-                <Trash2 className="plasmo-w-4 plasmo-h-4" />
-                Clear All Data
               </button>
             </div>
           </div>

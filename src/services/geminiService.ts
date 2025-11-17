@@ -103,8 +103,7 @@ const normalizeAutofill = (input: any): AutofillData | null => {
 
     // Account
     email: val(pick("email", "emailAddress", "email_address")) || "",
-    username:
-      val(pick("username", "userName", "user_name", "userid", "userId")) || "",
+    username: val(pick("username", "userName", "user_name")) || "",
     password: val(pick("password", "pass", "pwd")) || "",
 
     // Personal
@@ -140,7 +139,7 @@ const normalizeAutofill = (input: any): AutofillData | null => {
 
     // Web
     website: val(pick("website", "url")),
-    userid: val(pick("userid", "userId")),
+    userid: val(pick("userid", "userId", "user_id")),
 
     // Payment
     creditcardtype: val(pick("creditcardtype", "card_type", "cardType")),
@@ -301,12 +300,166 @@ export async function generateDummyData(
   return null
 }
 
-// Simple cache system with single entry and 10 minute auto-refresh
+// Helper to generate random password
+const generateRandomPassword = (): string => {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*"
+  const length = 12 + Math.floor(Math.random() * 5) // 12-16 chars
+  let pwd = ""
+  for (let i = 0; i < length; i++) {
+    pwd += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return pwd
+}
+
+// Backup dummy data pool for instant use while AI generates
+const BACKUP_DUMMY_POOL: AutofillData[] = [
+  {
+    title: "Mr",
+    firstname: "Alex",
+    middlename: "Jordan",
+    middleinitial: "J",
+    lastname: "Chen",
+    fullname: "Alex Jordan Chen",
+    username: "alexchen2024",
+    email: "alex.chen@example.com",
+    password: generateRandomPassword(),
+    gender: "2",
+    dob: "15-03-1992",
+    age: "32",
+    birthplace: "Singapore",
+    ssn: "456-78-9012",
+    driverslicense: "SG8765432",
+    company: "Tech Solutions Pte Ltd",
+    position: "Software Developer",
+    address1: "45 Marina Boulevard",
+    address2: "Unit 12-03",
+    city: "Singapore",
+    state: "Central Region",
+    zipcode: "018956",
+    postalcode: "018956",
+    country: "Singapore",
+    homephone: "+65 6234-5678",
+    workphone: "+65 6345-6789",
+    fax: "+65 6456-7890",
+    cellphone: "+65 9123-4567",
+    website: "https://alexchen.dev",
+    userid: "alexchen2024",
+    creditcardtype: "Visa",
+    creditcardnumber: "4532123456789012",
+    cardverificationcode: "789",
+    cardexpiration: "06/27",
+    cardusername: "Alex Jordan Chen",
+    cardissuingbank: "DBS Bank",
+    cardcustomerservicephone: "+65 1800-111-1111",
+    income: "78000",
+    custommessage: "Innovation through code",
+    comments: "Passionate about web development"
+  },
+  {
+    title: "Ms",
+    firstname: "Maria",
+    middlename: "Sofia",
+    middleinitial: "S",
+    lastname: "Garcia",
+    fullname: "Maria Sofia Garcia",
+    username: "mariagarcia89",
+    email: "maria.garcia@ejemplo.es",
+    password: generateRandomPassword(),
+    gender: "1",
+    dob: "22-08-1989",
+    age: "35",
+    birthplace: "Madrid, Spain",
+    ssn: "789-01-2345",
+    driverslicense: "ES1234567890",
+    company: "Innovación Digital SA",
+    position: "Project Manager",
+    address1: "Calle Gran Via 28",
+    address2: "Piso 5A",
+    city: "Madrid",
+    state: "Madrid",
+    zipcode: "28013",
+    postalcode: "28013",
+    country: "Spain",
+    homephone: "+34 91 123 4567",
+    workphone: "+34 91 234 5678",
+    fax: "+34 91 345 6789",
+    cellphone: "+34 612 345 678",
+    website: "https://mariagarcia.es",
+    userid: "mariagarcia89",
+    creditcardtype: "Mastercard",
+    creditcardnumber: "5412345678901234",
+    cardverificationcode: "456",
+    cardexpiration: "09/28",
+    cardusername: "Maria Sofia Garcia",
+    cardissuingbank: "Banco Santander",
+    cardcustomerservicephone: "+34 900 123 123",
+    income: "65000",
+    custommessage: "Leading with purpose",
+    comments: "Loves traveling and photography"
+  },
+  {
+    title: "Dr",
+    firstname: "Yuki",
+    middlename: "Haruto",
+    middleinitial: "H",
+    lastname: "Tanaka",
+    fullname: "Yuki Haruto Tanaka",
+    username: "yukitanaka",
+    email: "yuki.tanaka@example.jp",
+    password: generateRandomPassword(),
+    gender: "2",
+    dob: "10-11-1985",
+    age: "39",
+    birthplace: "Tokyo, Japan",
+    ssn: "234-56-7890",
+    driverslicense: "JP9876543210",
+    company: "Tokyo Medical Center",
+    position: "Senior Physician",
+    address1: "1-2-3 Shibuya",
+    address2: "Apt 801",
+    city: "Tokyo",
+    state: "Tokyo",
+    zipcode: "150-0002",
+    postalcode: "150-0002",
+    country: "Japan",
+    homephone: "+81 3-1234-5678",
+    workphone: "+81 3-2345-6789",
+    fax: "+81 3-3456-7890",
+    cellphone: "+81 90-1234-5678",
+    website: "https://yukitanaka.jp",
+    userid: "yukitanaka",
+    creditcardtype: "Amex",
+    creditcardnumber: "378282246310005",
+    cardverificationcode: "1234",
+    cardexpiration: "12/26",
+    cardusername: "Yuki Haruto Tanaka",
+    cardissuingbank: "Mitsubishi UFJ Bank",
+    cardcustomerservicephone: "+81 120-123-456",
+    income: "120000",
+    custommessage: "Healing with compassion",
+    comments: "Enjoys classical music and golf"
+  }
+]
+
+// Track if we're using backup data
+let usingBackupData = false
+
+// Simple cache system with single entry and 1 hour auto-refresh
 let cachedData: DummyUserData | null = null
 let cacheTimestamp: number = 0
-const CACHE_REFRESH_DURATION = 10 * 60 * 1000 // 10 minutes
+const CACHE_REFRESH_DURATION = 60 * 60 * 1000
 let refreshTimer: NodeJS.Timeout | null = null
 let isGenerating = false
+
+// Get random backup dummy data with fresh password
+function getBackupData(): AutofillData {
+  const randomIndex = Math.floor(Math.random() * BACKUP_DUMMY_POOL.length)
+  const backup = { ...BACKUP_DUMMY_POOL[randomIndex] }
+  // Generate fresh random password each time
+  backup.password = generateRandomPassword()
+  console.log("🎲 Using backup dummy data (random profile)")
+  return backup
+}
 
 // Initialize cache with single entry (with retries)
 async function initializeCache(attemptNumber: number = 1): Promise<void> {
@@ -319,8 +472,17 @@ async function initializeCache(attemptNumber: number = 1): Promise<void> {
 
   isGenerating = true
   console.log(
-    `🔄 Generating single dummy data entry (attempt ${attemptNumber}/${maxAttempts})...`
+    `🔄 Generating AI dummy data (attempt ${attemptNumber}/${maxAttempts})...`
   )
+
+  // Immediately provide backup data for instant use
+  if (!cachedData) {
+    const backupData = getBackupData()
+    cachedData = backupData
+    cacheTimestamp = Date.now()
+    usingBackupData = true
+    console.log("⚡ Backup data ready for instant use while AI generates...")
+  }
 
   try {
     const newData = await generateDummyData()
@@ -328,12 +490,14 @@ async function initializeCache(attemptNumber: number = 1): Promise<void> {
     if (newData) {
       cachedData = newData
       cacheTimestamp = Date.now()
+      usingBackupData = false
 
       // Save to chrome storage for persistence
       chrome.storage.local.set(
         {
           generatedData: newData,
-          generatedDataTimestamp: cacheTimestamp
+          generatedDataTimestamp: cacheTimestamp,
+          usingBackup: false
         },
         () => {
           if (chrome.runtime.lastError) {
@@ -345,26 +509,29 @@ async function initializeCache(attemptNumber: number = 1): Promise<void> {
         }
       )
 
-      console.log("✅ Data cached and ready for instant use!")
+      console.log("✅ AI-generated data cached and replaced backup!")
 
-      // Schedule auto-refresh after 10 minutes
+      // Schedule auto-refresh after 1 hour
       scheduleCacheRefresh()
     } else {
-      console.error(`❌ Failed to generate data on attempt ${attemptNumber}`)
+      console.error(`❌ Failed to generate AI data on attempt ${attemptNumber}`)
 
-      // Retry if we haven't exceeded max attempts
-      if (attemptNumber < maxAttempts) {
+      // Keep using backup data if generation fails
+      if (attemptNumber >= maxAttempts) {
+        console.warn(
+          "⚠️ All AI generation attempts failed, continuing with backup data"
+        )
+      } else {
+        // Retry if we haven't exceeded max attempts
         isGenerating = false
         const retryDelay = attemptNumber * 3000 // 3s, 6s, 9s
-        console.log(`⏳ Retrying cache initialization in ${retryDelay}ms...`)
+        console.log(`⏳ Retrying AI generation in ${retryDelay}ms...`)
         await delay(retryDelay)
         return initializeCache(attemptNumber + 1)
-      } else {
-        console.error("❌ All cache initialization attempts failed")
       }
     }
   } catch (error) {
-    console.error("Error generating cached data:", error)
+    console.error("Error generating AI cached data:", error)
 
     // Retry if we haven't exceeded max attempts
     if (attemptNumber < maxAttempts) {
@@ -373,6 +540,8 @@ async function initializeCache(attemptNumber: number = 1): Promise<void> {
       console.log(`⏳ Retrying after error in ${retryDelay}ms...`)
       await delay(retryDelay)
       return initializeCache(attemptNumber + 1)
+    } else {
+      console.warn("⚠️ Keeping backup data due to generation errors")
     }
   } finally {
     isGenerating = false
@@ -387,11 +556,11 @@ function scheduleCacheRefresh(): void {
   }
 
   refreshTimer = setTimeout(() => {
-    console.log("🔄 Auto-refreshing cached data after 10 minutes...")
+    console.log("🔄 Auto-refreshing cached data after 1 hour...")
     initializeCache()
   }, CACHE_REFRESH_DURATION)
 
-  console.log("⏰ Cache auto-refresh scheduled for 10 minutes from now")
+  console.log("⏰ Cache auto-refresh scheduled for 1 hour from now")
 }
 
 // Get cached data (instant, no waiting!)
@@ -403,9 +572,10 @@ export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
     const stored = await new Promise<{
       generatedData?: DummyUserData
       generatedDataTimestamp?: number
+      usingBackup?: boolean
     }>((resolve) => {
       chrome.storage.local.get(
-        ["generatedData", "generatedDataTimestamp"],
+        ["generatedData", "generatedDataTimestamp", "usingBackup"],
         (res) => {
           resolve(res)
         }
@@ -417,9 +587,11 @@ export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
       if (storedAge < CACHE_REFRESH_DURATION) {
         cachedData = stored.generatedData
         cacheTimestamp = stored.generatedDataTimestamp
+        usingBackupData = stored.usingBackup || false
         scheduleCacheRefresh()
+        const dataType = usingBackupData ? "backup" : "AI-generated"
         console.log(
-          `✅ Restored cached data from storage (age: ${Math.floor(storedAge / 1000)}s)`
+          `✅ Restored ${dataType} data from storage (age: ${Math.floor(storedAge / 1000)}s)`
         )
       }
     }
@@ -431,13 +603,17 @@ export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
     await initializeCache()
   }
 
-  // If still no data after initialization attempt, return null
+  // If still no data after initialization attempt, use backup as last resort
   if (!cachedData) {
-    return null
+    console.warn("⚠️ No cached data available, using backup as fallback")
+    cachedData = getBackupData()
+    cacheTimestamp = now
+    usingBackupData = true
   }
 
   const cacheAge = Math.floor((now - cacheTimestamp) / 1000)
-  console.log(`⚡ Instantly serving cached data (age: ${cacheAge}s)`)
+  const dataType = usingBackupData ? "backup" : "AI-generated"
+  console.log(`⚡ Instantly serving ${dataType} data (age: ${cacheAge}s)`)
 
   return cachedData
 }
@@ -479,6 +655,7 @@ export async function hasCachedData(): Promise<boolean> {
 export function clearCache(): void {
   cachedData = null
   cacheTimestamp = 0
+  usingBackupData = false
   if (refreshTimer) {
     clearTimeout(refreshTimer)
     refreshTimer = null
@@ -486,7 +663,7 @@ export function clearCache(): void {
 
   // Clear from storage as well
   chrome.storage.local.remove(
-    ["generatedData", "generatedDataTimestamp"],
+    ["generatedData", "generatedDataTimestamp", "usingBackup"],
     () => {
       if (chrome.runtime.lastError) {
         console.error("Error clearing storage:", chrome.runtime.lastError)
