@@ -1,21 +1,99 @@
 // Storage service to manage autofill data (custom or auto-generated)
-import type { DummyUserData } from "./geminiService"
 import { getCachedOrGenerateData } from "./geminiService"
 
 export interface AutofillData {
-  username?: string
-  email?: string
-  password?: string
+  // Basic Info
+  title?: string
   firstname?: string
+  middlename?: string
+  middleinitial?: string
   lastname?: string
-  dob?: string
+  fullname?: string
+
+  // Contact Info
+  email?: string
+  username?: string
+  password?: string
+
+  // Personal Details
   gender?: string
+  dob?: string
+  age?: string
+  birthplace?: string
+  ssn?: string
+  driverslicense?: string
+
+  // Company/Work
+  company?: string
+  position?: string
+
+  // Address
+  address1?: string
+  address2?: string
+  city?: string
+  state?: string
   zipcode?: string
   postalcode?: string
+  country?: string
+
+  // Phone Numbers
+  homephone?: string
+  workphone?: string
+  fax?: string
+  cellphone?: string
+
+  // Web
+  website?: string
+  userid?: string
+
+  // Payment Info
+  creditcardtype?: string
+  creditcardnumber?: string
+  cardverificationcode?: string
+  cardexpiration?: string
+  cardusername?: string
+  cardissuingbank?: string
+  cardcustomerservicephone?: string
+
+  // Additional
+  income?: string
+  custommessage?: string
+  comments?: string
 }
 
 /**
- * Get autofill data - checks custom data first, falls back to Gemini-generated data
+ * Get AI mode setting
+ */
+export async function getAIMode(): Promise<boolean> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get("aiModeEnabled", (res) => {
+      // Default to true (AI enabled by default)
+      resolve(res.aiModeEnabled !== false)
+    })
+  })
+}
+
+/**
+ * Set AI mode setting
+ */
+export async function setAIMode(
+  enabled: boolean
+): Promise<{ success: boolean }> {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ aiModeEnabled: enabled }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error saving AI mode:", chrome.runtime.lastError)
+        resolve({ success: false })
+      } else {
+        console.log(`✅ AI mode ${enabled ? "enabled" : "disabled"}`)
+        resolve({ success: true })
+      }
+    })
+  })
+}
+
+/**
+ * Get autofill data - checks custom data first, then AI data if AI mode is enabled
  */
 export async function getAutofillData(): Promise<{
   data: AutofillData | null
@@ -23,8 +101,9 @@ export async function getAutofillData(): Promise<{
 }> {
   return new Promise((resolve) => {
     // First, check if user has saved custom data
-    chrome.storage.local.get("autofillData", async (res) => {
+    chrome.storage.local.get(["autofillData", "aiModeEnabled"], async (res) => {
       const customData = res.autofillData as AutofillData | undefined
+      const aiModeEnabled = res.aiModeEnabled !== false // Default to true
 
       // Check if custom data exists and has at least one field filled
       const hasCustomData =
@@ -32,20 +111,27 @@ export async function getAutofillData(): Promise<{
         Object.values(customData).some((value) => value && value.trim() !== "")
 
       if (hasCustomData) {
-        console.log("📝 Using custom user data")
+        console.log("📝 Using custom user data (overrides AI)")
         resolve({ data: customData, source: "custom" })
         return
       }
 
-      // No custom data, generate using Gemini API
-      console.log("🤖 No custom data found, generating with Gemini API...")
+      // No custom data - check if AI mode is enabled
+      if (!aiModeEnabled) {
+        console.log("🚫 AI mode disabled and no custom data available")
+        resolve({ data: null, source: "none" })
+        return
+      }
+
+      // AI mode enabled, generate data
+      console.log("🤖 AI mode enabled, generating data...")
       const generatedData = await getCachedOrGenerateData()
 
       if (generatedData) {
         console.log("✅ Using Gemini-generated data")
         resolve({ data: generatedData, source: "generated" })
       } else {
-        console.warn("⚠️ Failed to generate data, no data available")
+        console.warn("⚠️ Failed to generate AI data, no data available")
         resolve({ data: null, source: "none" })
       }
     })
@@ -104,50 +190,45 @@ export async function hasCustomData(): Promise<boolean> {
 }
 
 /**
- * Save AI-generated data after first use
- * This allows users to see and reuse the generated data later
+ * Gemini API key helpers (runtime configurable)
  */
-export async function saveGeneratedDataAfterUse(
-  data: AutofillData
+export async function getGeminiApiKey(): Promise<string | null> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get("geminiApiKey", (res) => {
+      const key = (res.geminiApiKey as string | undefined) || null
+      resolve(key)
+    })
+  })
+}
+
+export async function setGeminiApiKey(
+  key: string
 ): Promise<{ success: boolean }> {
   return new Promise((resolve) => {
-    // Check if custom data already exists
-    chrome.storage.local.get("autofillData", (res) => {
-      const existingData = res.autofillData as AutofillData | undefined
-      const hasExisting =
-        existingData &&
-        Object.values(existingData).some(
-          (value) => value && value.trim() !== ""
-        )
-
-      // Only save if no custom data exists
-      if (!hasExisting) {
-        // Convert DOB from DD-MM-YYYY to YYYY-MM-DD for date input
-        const dataToSave = { ...data }
-        if (dataToSave.dob && dataToSave.dob.includes("-")) {
-          const parts = dataToSave.dob.split("-")
-          if (parts.length === 3) {
-            const [day, month, year] = parts
-            // Convert to YYYY-MM-DD format for HTML date input
-            dataToSave.dob = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-          }
-        }
-
-        chrome.storage.local.set({ autofillData: dataToSave }, () => {
-          if (chrome.runtime.lastError) {
-            console.error(
-              "Error saving generated data:",
-              chrome.runtime.lastError
-            )
-            resolve({ success: false })
-          } else {
-            console.log("💾 AI-generated data saved for future reference")
-            resolve({ success: true })
-          }
-        })
-      } else {
-        console.log("📝 Custom data exists, not overwriting")
+    chrome.storage.local.set({ geminiApiKey: key }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error saving Gemini API key:", chrome.runtime.lastError)
         resolve({ success: false })
+      } else {
+        console.log("✅ Gemini API key saved")
+        resolve({ success: true })
+      }
+    })
+  })
+}
+
+export async function clearGeminiApiKey(): Promise<{ success: boolean }> {
+  return new Promise((resolve) => {
+    chrome.storage.local.remove("geminiApiKey", () => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Error clearing Gemini API key:",
+          chrome.runtime.lastError
+        )
+        resolve({ success: false })
+      } else {
+        console.log("✅ Gemini API key cleared")
+        resolve({ success: true })
       }
     })
   })

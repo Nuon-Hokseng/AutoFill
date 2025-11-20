@@ -6,9 +6,8 @@ import {
   matchesAny
 } from "../Detector/utils"
 
-const FIRSTNAME_KEYWORDS: string[] = ([] as string[]).concat(
-  ...Object.values(FIELD_KEYWORDS)
-)
+// Restrict matching to only firstname-related keywords (avoid overmatching)
+const FIRSTNAME_KEYWORDS: string[] = FIELD_KEYWORDS.firstname
 
 export function detectFirstNameField(
   inputs: HTMLInputElement[]
@@ -22,15 +21,25 @@ export function detectFirstNameField(
       el.getAttribute("id"),
       el.getAttribute("placeholder"),
       el.getAttribute("aria-label"),
+      el.getAttribute("autocomplete"),
+      el.getAttribute("data-test"),
+      el.getAttribute("data-testid"),
+      el.getAttribute("data-field"),
+      el.getAttribute("data-name"),
       getAssociatedLabelText(el)
     ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase()
 
-    if (matchesAny(tagStr, FIRSTNAME_KEYWORDS)) {
+    if (
+      matchesAny(tagStr, FIRSTNAME_KEYWORDS) ||
+      // direct autocomplete token for first name
+      /(given[-_]name)/.test(tagStr) ||
+      // common camelCase patterns
+      /firstName|givenName/.test(tagStr)
+    ) {
       firstnameEl = el
-      console.log("Found first name field by attribute matching")
       break
     }
   }
@@ -45,7 +54,6 @@ export async function fillFirstName(
   if (!firstnameEl || !firstname) return false
 
   try {
-    console.log("Filling first name field")
     await fillFieldWithAnimation(firstnameEl, firstname)
     return true
   } catch (error) {

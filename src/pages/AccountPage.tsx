@@ -1,6 +1,7 @@
 
 
-import React, { useState, useEffect } from "react" // <-- 1. Added useEffect
+import React = require("react")
+import  { useState, useEffect } from "react" // <-- 1. Added useEffect
 import "~style.css"
 import { Button } from "~features/components/ui/button"
 import { Input } from "~features/components/ui/input"
