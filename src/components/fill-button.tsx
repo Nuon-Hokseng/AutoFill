@@ -83,23 +83,23 @@ export const FillButton = ({
     }
   }
   return (
-    <section id="fill-button plasmo-flex ">
+    <section id="fill-button flex ">
       <button
-        className="plasmo-text-lg plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2 plasmo-p-2 plasmo-w-full plasmo-px-4 plasmo-py-2 plasmo-bg-blue-500 plasmo-text-white plasmo-rounded hover:plasmo-bg-blue-600 plasmo-transition"
+        className="text-lg flex items-center justify-center gap-2 p-2 w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
         onClick={handleClick}>
         {status === "loading" ? (
           <>
-            <RefreshCw className="plasmo-w-4 plasmo-h-4 plasmo-animate-spin" />
+            <RefreshCw className="w-4 h-4 animate-spin" />
             <span>Auto Filling...</span>
           </>
         ) : (
           <>
-            <Wand2 className="plasmo-w-4 plasmo-h-4" />
-            <span className="plasmo-font-semibold">AutoFill</span>
+            <Wand2 className="w-4 h-4" />
+            <span className="font-semibold">AutoFill</span>
           </>
         )}
       </button>
-      <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-mt-2">
+      <div className="flex items-center justify-center mt-2">
         {status === "success" && (
           <span
             aria-label="filled"
@@ -136,9 +136,9 @@ export const FillButton = ({
         {status === "noform" && (
           <span
             aria-label="noform"
-            className="plasmo-text-yellow-600 plasmo-flex plasmo-items-center plasmo-gap-2">
-            <AlertCircle className="plasmo-w-5 plasmo-h-5" />
-            <span className="plasmo-text-sm plasmo-text-yellow-700">
+            className="text-yellow-600 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5" />
+            <span className="text-sm text-yellow-700">
               No form detected
             </span>
           </span>

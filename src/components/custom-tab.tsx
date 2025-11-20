@@ -196,9 +196,9 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
     chrome.storage.local.get("autofillData", (res) => {
       if (!res.autofillData) {
         setStatus(
-          <span className="plasmo-justify-center plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-text-gray-700">
-            <X className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-red-600" />
-            <span className="plasmo-text-gray-700">No data detected</span>
+          <span className="justify-center flex items-center gap-2 text-gray-700">
+            <X className="w-5 h-5 animate-pulse text-red-600" />
+            <span className="text-gray-700">No data detected</span>
           </span>
         )
         setTimeout(() => setStatus(""), 2000)
@@ -213,9 +213,9 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
         )
         console.log("🗑️ Custom data removed successfully")
         setStatus(
-          <span className="plasmo-justify-center plasmo-flex plasmo-items-center plasmo-gap-2 ">
-            <Trash className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse plasmo-text-green-600" />
-            <span className="plasmo-text-gray-700">Removed!</span>
+          <span className="justify-center flex items-center gap-2 ">
+            <Trash className="w-5 h-5 animate-pulse text-green-600" />
+            <span className="text-gray-700">Removed!</span>
           </span>
         )
         setTimeout(() => setStatus(""), 2000)
@@ -312,13 +312,13 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
   }
 
   return (
-    <div className="plasmo-w-80 plasmo-bg-white plasmo-rounded-lg plasmo-shadow-2xl plasmo-border plasmo-border-gray-200 plasmo-overflow-hidden">
-      <div className="plasmo-p-4 plasmo-space-y-4">
-        <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-gap-2">
-          <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+    <div className="w-80 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
+      <div className="p-4 space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={goBack}
-              className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600">
+              className="p-1 rounded text-gray-600">
               <ArrowLeft size={16} />
             </button>
             <h1 className="plasmo-text-sm plasmo-font-semibold plasmo-text-gray-800">
@@ -496,22 +496,22 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
           })}
         </div>
 
-        <div className="plasmo-flex plasmo-gap-2 plasmo-mt-2">
+        <div className="flex gap-2 mt-2">
           <button
             onClick={handleRemove}
-            className="plasmo-p-2 plasmo-bg-gray-100 plasmo-rounded plasmo-w-full plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2">
-            <Trash2 className="plasmo-w-4 plasmo-h-4" />
+            className="p-2 bg-gray-100 rounded w-full flex items-center justify-center gap-2">
+            <Trash2 className="w-4 h-4" />
             Remove
           </button>
           <button
             onClick={handleSave}
-            className="plasmo-p-2 plasmo-bg-blue-500 plasmo-text-white plasmo-rounded plasmo-w-full plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2">
-            <Check className="plasmo-w-4 plasmo-h-4" />
+            className="p-2 bg-blue-500 text-white rounded w-full flex items-center justify-center gap-2">
+            <Check className="w-4 h-4" />
             Save
           </button>
         </div>
 
-        {status && <p className="plasmo-text-center plasmo-mt-2">{status}</p>}
+        {status && <p className="text-center mt-2">{status}</p>}
       </div>
     </div>
   )
