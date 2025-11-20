@@ -332,7 +332,33 @@ export default function IndexPopup() {
           <div className="plasmo-space-y-4">
             <div className="plasmo-space-y-2 plasmo-pt-4 plasmo-border-t plasmo-border-gray-200">
               <button
-                onClick={() => chrome.runtime.openOptionsPage()}
+                onClick={() => {
+                  const target = "/dashboard"
+                  const url = chrome.runtime.getURL(`options.html#${target}`)
+                  chrome.storage.local.set(
+                    { optionsNavigateTo: target },
+                    () => {
+                      chrome.runtime.openOptionsPage(() => {
+                        if (chrome.runtime.lastError) {
+                          console.warn(
+                            "openOptionsPage failed:",
+                            chrome.runtime.lastError
+                          )
+                          if (chrome.tabs?.create) {
+                            chrome.tabs.create({ url }, () => {
+                              if (chrome.runtime.lastError) {
+                                console.error(
+                                  "tabs.create fallback failed:",
+                                  chrome.runtime.lastError
+                                )
+                              }
+                            })
+                          }
+                        }
+                      })
+                    }
+                  )
+                }}
                 className="plasmo-justify-center plasmo-w-full plasmo-text-sm plasmo-py-2 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-flex plasmo-items-center plasmo-gap-2">
                 <Globe className="plasmo-w-4 plasmo-h-4" />
                 Manage Websites
