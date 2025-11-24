@@ -1,7 +1,12 @@
 
 
 // src/pages/LoginPage.tsx
+<<<<<<< HEAD
 import React, { useState } from "react"
+=======
+import { useState } from "react"
+import React = require("react")
+>>>>>>> seng
 import { useNavigate } from "react-router-dom"
 import { supabase } from "~lib/supabaseClient" // 1. Import your client
 

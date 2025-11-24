@@ -1,6 +1,5 @@
 import * as React from "react"
-import clsx from "clsx"
-
+import clsx from "clsx";
 //Extend native button props
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {

@@ -30,7 +30,6 @@ export function detectUsernameField(
 
     if (matchesAny(tagStr, USERNAME_KEYWORDS)) {
       usernameEl = el
-      console.log("Found username field by attribute matching")
       break
     }
   }
@@ -44,7 +43,6 @@ export async function fillUsername(
   if (!usernameEl || !username) return false
 
   try {
-    console.log("Filling username field")
     await fillFieldWithAnimation(usernameEl, username)
     return true
   } catch (error) {

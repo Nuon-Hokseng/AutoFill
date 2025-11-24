@@ -5,6 +5,8 @@ import {
   Eye,
   EyeOff,
   Info,
+  RefreshCw,
+  Settings2,
   Sparkles,
   Trash,
   Trash2,
@@ -12,75 +14,142 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
-import { useStorage } from "@plasmohq/storage/hook"
+// Use background messaging to clear AI cache to ensure background memory is reset
 
 import React = require("react")
 
 const initialFormState = {
-  username: "",
+  // Basic Info
+  title: "",
   firstname: "",
+  middlename: "",
+  middleinitial: "",
   lastname: "",
+  fullname: "",
+
+  // Account
+  username: "",
+  email: "",
+  password: "",
+  userid: "",
+
+  // Personal
   gender: "",
   dob: "",
-  email: "",
-  password: ""
+  age: "",
+  birthplace: "",
+  ssn: "",
+  driverslicense: "",
+
+  // Company
+  company: "",
+  position: "",
+
+  // Address
+  address1: "",
+  address2: "",
+  city: "",
+  state: "",
+  zipcode: "",
+  postalcode: "",
+  country: "",
+
+  // Contact
+  homephone: "",
+  workphone: "",
+  cellphone: "",
+  fax: "",
+  website: "",
+
+  // Payment
+  creditcardtype: "",
+  creditcardnumber: "",
+  cardverificationcode: "",
+  cardexpiration: "",
+  cardusername: "",
+  cardissuingbank: "",
+  cardcustomerservicephone: "",
+
+  // Other
+  income: "",
+  custommessage: "",
+  comments: ""
 }
 
 export default function CustomTab({ goBack }: { goBack: () => void }) {
-  const [form, setForm] = useStorage("autofillData", (v) =>
-    v === undefined ? initialFormState : v
-  )
+  // Local state for manual input only
+  // Local state for display with DOB conversion
+  const [form, setForm] = useState(initialFormState)
   const [status, setStatus] = useState<React.ReactNode>("")
-  const [showValues, setShowValues] = useState(false)
-  const [hasAnyData, setHasAnyData] = useState(false)
+  const [showFieldSelector, setShowFieldSelector] = useState(false)
 
-  // Load data from Chrome storage when component mounts
+  // Track visibility for each sensitive field individually
+  const [fieldVisibility, setFieldVisibility] = useState<
+    Record<string, boolean>
+  >({})
+
+  // Field selection state - default to most common fields
+  const [enabledFields, setEnabledFields] = useState<Set<string>>(
+    new Set(["firstname", "lastname", "username", "email", "password"])
+  )
+
+  // Define which fields are sensitive and should have eye toggle
+  const sensitiveFields = new Set([
+    "password",
+    "ssn",
+    "driverslicense",
+    "creditcardnumber",
+    "cardverificationcode",
+    "cardexpiration",
+    "cardcustomerservicephone"
+  ])
+
+  const toggleFieldVisibility = (fieldKey: string) => {
+    setFieldVisibility((prev) => ({
+      ...prev,
+      [fieldKey]: !prev[fieldKey]
+    }))
+  }
+
+  // Load initial data from storage
   useEffect(() => {
-    chrome.storage.local.get("autofillData", (res) => {
+    chrome.storage.local.get(["autofillData", "enabledFields"], (res) => {
       if (res.autofillData) {
-        console.log("📥 Loaded data from storage:", res.autofillData)
-        setForm(res.autofillData)
+        const displayData = { ...res.autofillData }
+
+        // Convert DOB from DD-MM-YYYY (storage) to YYYY-MM-DD (date input) if needed
+        if (displayData.dob && displayData.dob.includes("-")) {
+          const parts = displayData.dob.split("-")
+          if (parts.length === 3 && parts[0].length <= 2) {
+            // Format is DD-MM-YYYY from storage, convert to YYYY-MM-DD for input
+            const [day, month, year] = parts
+            displayData.dob = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+            console.log(
+              `📅 Converting DOB for display: ${res.autofillData.dob} → ${displayData.dob}`
+            )
+          }
+          // If already YYYY-MM-DD, keep as is
+        }
+
+        setForm(displayData)
+        console.log("📝 Updated display form from storage:", displayData)
       } else {
-        console.log("📭 No data found in storage")
+        setForm(initialFormState)
+      }
+
+      // Load enabled fields
+      if (res.enabledFields && Array.isArray(res.enabledFields)) {
+        setEnabledFields(new Set(res.enabledFields))
+        console.log("📋 Loaded enabled fields:", res.enabledFields)
       }
     })
-
-    // Listen for storage changes
-    const handleStorageChange = (
-      changes: { [key: string]: chrome.storage.StorageChange },
-      areaName: string
-    ) => {
-      if (areaName === "local" && changes.autofillData) {
-        console.log(
-          "🔄 Storage changed, reloading data:",
-          changes.autofillData.newValue
-        )
-        if (changes.autofillData.newValue) {
-          setForm(changes.autofillData.newValue)
-        }
-      }
-    }
-
-    chrome.storage.onChanged.addListener(handleStorageChange)
-
-    // Cleanup listener on unmount
-    return () => {
-      chrome.storage.onChanged.removeListener(handleStorageChange)
-    }
   }, [])
-
-  // Check if form has any data
-  useEffect(() => {
-    const hasData = Object.values(form || {}).some(
-      (value) => value && typeof value === "string" && value.trim() !== ""
-    )
-    setHasAnyData(hasData)
-  }, [form])
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { id, value } = e.target as HTMLInputElement
+    // Update local state only - no auto-save
     setForm({ ...form, [id]: value })
   }
 
@@ -88,20 +157,38 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
     const { dob, ...rest } = form
     const payload = { ...rest, dob }
 
-    if (dob) {
-      const [year, month, day] = dob.split("-")
-      payload.dob = `${day}-${month}-${year}`
+    // Convert DOB from YYYY-MM-DD (HTML date input) to DD-MM-YYYY for autofill
+    if (dob && dob.includes("-")) {
+      const parts = dob.split("-")
+      if (parts.length === 3 && parts[0].length === 4) {
+        // Format is YYYY-MM-DD from date input
+        const [year, month, day] = parts
+        payload.dob = `${day}-${month}-${year}`
+        console.log(`📅 Converting DOB for save: ${dob} → ${payload.dob}`)
+      } else {
+        // Already in DD-MM-YYYY format
+        payload.dob = dob
+      }
     }
 
-    chrome.storage.local.set({ autofillData: payload }, () => {
-      setStatus(
-        <span className=" flex justify-center items-center gap-2 ">
-          <CheckCheck className=" w-5 h-5 animate-pulse text-green-600" />
-          <span className="text-gray-700">Saved</span>
-        </span>
-      )
-      setTimeout(() => setStatus(""), 2000)
-    })
+    // Save to storage along with enabled fields
+    chrome.storage.local.set(
+      {
+        autofillData: payload,
+        enabledFields: Array.from(enabledFields)
+      },
+      () => {
+        console.log("✅ Custom data saved successfully:", payload)
+        console.log("✅ Enabled fields saved:", Array.from(enabledFields))
+        setStatus(
+          <span className=" flex justify-center items-center gap-2 ">
+            <CheckCheck className=" w-5 h-5 animate-pulse text-green-600" />
+            <span className="text-gray-700">Saved</span>
+          </span>
+        )
+        setTimeout(() => setStatus(""), 2000)
+      }
+    )
   }
 
   const handleRemove = () => {
@@ -118,9 +205,13 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
         return
       }
 
-      // Remove saved data
-      chrome.storage.local.remove("autofillData", () => {
+      // Remove saved data and enabled fields
+      chrome.storage.local.remove(["autofillData", "enabledFields"], () => {
         setForm(initialFormState)
+        setEnabledFields(
+          new Set(["firstname", "lastname", "username", "email", "password"])
+        )
+        console.log("🗑️ Custom data removed successfully")
         setStatus(
           <span className="justify-center flex items-center gap-2 ">
             <Trash className="w-5 h-5 animate-pulse text-green-600" />
@@ -132,15 +223,93 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
     })
   }
 
-  const inputFields = [
-    { key: "username", label: "Username", type: "text" },
-    { key: "firstname", label: "First Name", type: "text" },
-    { key: "lastname", label: "Last Name", type: "text" },
-    { key: "gender", label: "Gender", type: "select" },
-    { key: "dob", label: "DOB", type: "date" },
-    { key: "email", label: "Email", type: "email" },
-    { key: "password", label: "Password", type: "password" }
-  ]
+  const toggleField = (fieldKey: string) => {
+    const newSet = new Set(enabledFields)
+    if (newSet.has(fieldKey)) {
+      newSet.delete(fieldKey)
+    } else {
+      newSet.add(fieldKey)
+    }
+    setEnabledFields(newSet)
+  }
+
+  const inputFieldGroups = {
+    "Basic Info": [
+      {
+        key: "title",
+        label: "Title",
+        type: "select",
+        options: ["", "Mr", "Mrs", "Ms", "Dr", "Prof"]
+      },
+      { key: "firstname", label: "First Name", type: "text" },
+      { key: "middlename", label: "Middle Name", type: "text" },
+      { key: "middleinitial", label: "Middle Initial", type: "text" },
+      { key: "lastname", label: "Last Name", type: "text" },
+      { key: "fullname", label: "Full Name", type: "text" }
+    ],
+    Account: [
+      { key: "username", label: "Username", type: "text" },
+      { key: "email", label: "Email", type: "email" },
+      { key: "password", label: "Password", type: "password" },
+      { key: "userid", label: "User ID", type: "text" }
+    ],
+    Personal: [
+      {
+        key: "gender",
+        label: "Gender",
+        type: "select",
+        options: ["", "1", "2", "-1"]
+      },
+      { key: "dob", label: "Date of Birth", type: "date" },
+      { key: "age", label: "Age", type: "text" },
+      { key: "birthplace", label: "Birth Place", type: "text" },
+      { key: "ssn", label: "SSN", type: "text" },
+      { key: "driverslicense", label: "Driver License", type: "text" }
+    ],
+    Company: [
+      { key: "company", label: "Company", type: "text" },
+      { key: "position", label: "Position", type: "text" }
+    ],
+    Address: [
+      { key: "address1", label: "Address Line 1", type: "text" },
+      { key: "address2", label: "Address Line 2", type: "text" },
+      { key: "city", label: "City", type: "text" },
+      { key: "state", label: "State/Province", type: "text" },
+      { key: "zipcode", label: "Zip Code", type: "text" },
+      { key: "postalcode", label: "Postal Code", type: "text" },
+      { key: "country", label: "Country", type: "text" }
+    ],
+    Contact: [
+      { key: "homephone", label: "Home Phone", type: "tel" },
+      { key: "workphone", label: "Work Phone", type: "tel" },
+      { key: "cellphone", label: "Cell Phone", type: "tel" },
+      { key: "fax", label: "Fax", type: "tel" },
+      { key: "website", label: "Website", type: "url" }
+    ],
+    Payment: [
+      {
+        key: "creditcardtype",
+        label: "Card Type",
+        type: "select",
+        options: ["", "Visa", "Mastercard", "Amex", "Discover"]
+      },
+      { key: "creditcardnumber", label: "Card Number", type: "text" },
+      { key: "cardverificationcode", label: "CVV", type: "text" },
+      { key: "cardexpiration", label: "Expiration (MM/YY)", type: "text" },
+      { key: "cardusername", label: "Name on Card", type: "text" },
+      { key: "cardissuingbank", label: "Issuing Bank", type: "text" },
+      {
+        key: "cardcustomerservicephone",
+        label: "Customer Service",
+        type: "tel"
+      }
+    ],
+    Other: [
+      { key: "income", label: "Income", type: "text" },
+      { key: "custommessage", label: "Custom Message", type: "text" },
+      { key: "comments", label: "Comments", type: "text" }
+    ]
+  }
 
   return (
     <div className="w-80 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
@@ -152,114 +321,177 @@ export default function CustomTab({ goBack }: { goBack: () => void }) {
               className="p-1 rounded text-gray-600">
               <ArrowLeft size={16} />
             </button>
-            <h1 className="text-lg font-semibold text-gray-800">
+            <h1 className="text-sm font-semibold text-gray-800">
               Custom Credentials
             </h1>
           </div>
-          <button
-            onClick={() => setShowValues((s) => !s)}
-            className="p-1 rounded text-gray-600"
-            aria-label={showValues ? "Hide values" : "Show values"}>
-            {showValues ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowFieldSelector((s) => !s)}
+              className="p-1 rounded text-gray-600 hover:bg-gray-100"
+              aria-label="Select fields">
+              <Settings2 size={16} />
+            </button>
+          </div>
         </div>
 
-        {!hasAnyData && (
-          <div className="plasmo-bg-blue-50 plasmo-border plasmo-border-blue-200 plasmo-rounded-lg plasmo-p-3 plasmo-flex plasmo-items-start plasmo-gap-2">
-            <Sparkles className="plasmo-w-5 plasmo-h-5 plasmo-text-blue-600 plasmo-flex-shrink-0 plasmo-mt-0.5" />
-            <div className="plasmo-text-sm plasmo-text-blue-800">
-              <p className="plasmo-font-medium plasmo-mb-1">
-                AI-Generated Data Active
-              </p>
-              <p className="plasmo-text-blue-700">
-                Since no custom data is saved, we'll use AI-generated dummy data
-                for autofill.
-              </p>
+        {showFieldSelector && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-800">
+                Select Fields to Enable
+              </h3>
+              <button
+                onClick={() => setShowFieldSelector(false)}
+                className="text-gray-600 hover:text-gray-800">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+              {Object.entries(inputFieldGroups).map(([groupName, fields]) => (
+                <div key={groupName} className="space-y-1">
+                  <h4 className="text-xs font-semibold text-gray-600 uppercase">
+                    {groupName}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-1">
+                    {fields.map(({ key, label }: any) => (
+                      <label
+                        key={key}
+                        className="flex items-center gap-1 text-xs cursor-pointer p-1 rounded hover:bg-blue-100">
+                        <input
+                          type="checkbox"
+                          checked={enabledFields.has(key)}
+                          onChange={() => toggleField(key)}
+                          className="w-3 h-3"
+                        />
+                        <span className="text-gray-700">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {hasAnyData && (
-          <div className="plasmo-bg-green-50 plasmo-border plasmo-border-green-200 plasmo-rounded-lg plasmo-p-3 plasmo-flex plasmo-items-start plasmo-gap-2">
-            <Info className="plasmo-w-5 plasmo-h-5 plasmo-text-green-600 plasmo-flex-shrink-0 plasmo-mt-0.5" />
-            <div className="plasmo-text-sm plasmo-text-green-800">
-              <p className="plasmo-font-medium plasmo-mb-1">
-                Saved Credentials
-              </p>
-              <p className="plasmo-text-green-700">
-                These credentials will be used for autofill. You can edit or
-                remove them anytime.
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="plasmo-space-y-3 plasmo-max-h-80 plasmo-overflow-y-auto">
-          {inputFields.map(({ key, label, type }) => {
-            if (type === "select") {
-              return (
-                <label key={key} htmlFor={key} className="block">
-                  <span className="block text-sm text-gray-700 mb-1">
-                    {label}
-                  </span>
-                  <select
-                    id={key}
-                    value={form?.[key] || ""}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-md px-2 py-1">
-                    <option value="" disabled>
-                      Select...
-                    </option>
-                    <option value="1">Female</option>
-                    <option value="2">Male</option>
-                    <option value="-1">Custom</option>
-                  </select>
-                </label>
-              )
-            }
-
-            if (type === "date") {
-              return (
-                <label key={key} htmlFor={key} className="block">
-                  <span className="block text-sm text-gray-700 mb-1">
-                    {label}
-                  </span>
-                  <input
-                    id={key}
-                    type="date"
-                    max="2010-01-01"
-                    value={form?.[key] || ""}
-                    onChange={handleInputChange as any}
-                    className="w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </label>
-              )
-            }
-
-            // For non-select/non-date inputs, toggle masking when showValues is false
-            const renderType =
-              type === "date" || type === "select"
-                ? type
-                : showValues
-                  ? type === "password"
-                    ? "text"
-                    : type
-                  : "password"
+        <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+          {Object.entries(inputFieldGroups).map(([groupName, fields]) => {
+            const enabledInGroup = fields.filter(({ key }: any) =>
+              enabledFields.has(key)
+            )
+            if (enabledInGroup.length === 0) return null
 
             return (
-              <label key={key} htmlFor={key} className="block">
-                <span className="block text-sm text-gray-700 mb-1">
-                  {label}
-                </span>
-                <input
-                  id={key}
-                  type={renderType as any}
-                  placeholder={label}
-                  value={form?.[key] || ""}
-                  onChange={handleInputChange as any}
-                  className="w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </label>
+              <div key={groupName} className="space-y-2">
+                <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide pt-2 border-t border-gray-200">
+                  {groupName}
+                </h3>
+                {fields.map(({ key, label, type, options }: any) => {
+                  const isEnabled = enabledFields.has(key)
+                  if (!isEnabled) return null
+
+                  if (type === "select") {
+                    return (
+                      <label key={key} htmlFor={key} className="block">
+                        <span className="block text-xs text-gray-700 mb-1">
+                          {label}
+                        </span>
+                        <select
+                          id={key}
+                          value={form?.[key] || ""}
+                          onChange={handleInputChange}
+                          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm">
+                          {options ? (
+                            options.map((opt: string) => (
+                              <option key={opt} value={opt}>
+                                {opt === ""
+                                  ? "Select..."
+                                  : key === "gender"
+                                    ? opt === "1"
+                                      ? "Female"
+                                      : opt === "2"
+                                        ? "Male"
+                                        : opt === "-1"
+                                          ? "Custom"
+                                          : opt
+                                    : opt}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value="" disabled>
+                                Select...
+                              </option>
+                              <option value="1">Female</option>
+                              <option value="2">Male</option>
+                              <option value="-1">Custom</option>
+                            </>
+                          )}
+                        </select>
+                      </label>
+                    )
+                  }
+
+                  if (type === "date") {
+                    return (
+                      <label key={key} htmlFor={key} className="block">
+                        <span className="block text-xs text-gray-700 mb-1">
+                          {label}
+                        </span>
+                        <input
+                          id={key}
+                          type="date"
+                          max="2010-01-01"
+                          value={form?.[key] || ""}
+                          onChange={handleInputChange as any}
+                          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </label>
+                    )
+                  }
+
+                  // For sensitive fields, show/hide based on field-specific visibility
+                  const isSensitive = sensitiveFields.has(key)
+                  const isVisible = fieldVisibility[key]
+                  // If sensitive and not visible, show as password, otherwise show as text
+                  const renderType = isSensitive
+                    ? isVisible
+                      ? "text"
+                      : "password"
+                    : type
+
+                  return (
+                    <div key={key} className="block relative">
+                      <span className="block text-xs text-gray-700 mb-1">
+                        {label}
+                      </span>
+                      <div className="relative">
+                        <input
+                          id={key}
+                          type={renderType as any}
+                          placeholder={label}
+                          value={form?.[key] || ""}
+                          onChange={handleInputChange as any}
+                          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
+                        />
+                        {isSensitive && (
+                          <button
+                            type="button"
+                            onClick={() => toggleFieldVisibility(key)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                            aria-label={isVisible ? "Hide" : "Show"}>
+                            {isVisible ? (
+                              <EyeOff size={14} />
+                            ) : (
+                              <Eye size={14} />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             )
           })}
         </div>

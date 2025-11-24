@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+<<<<<<< HEAD
   content: [
     "./src/**/*.{ts,tsx,js,jsx}", // make sure Plasmo files are scanned
   ],
@@ -15,4 +16,9 @@ module.exports = {
   },
   plugins: [],
 }
+=======
+  content: ["./src/**/*.{tsx,html}"],
+  darkMode: "media",
+  prefix: ""
+>>>>>>> seng
 }

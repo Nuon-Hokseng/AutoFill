@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React from "react"
+=======
+import React = require("react")
+>>>>>>> seng
 
 export default function CustomFields() {
   return (

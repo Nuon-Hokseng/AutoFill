@@ -1,6 +1,7 @@
 import { AlertCircle, Check, RefreshCw, Wand2, X } from "lucide-react"
 import { useState } from "react"
-import React = require("react");
+
+import React = require("react")
 
 type FillResult = { filled?: number; total?: number } | null
 
@@ -12,7 +13,7 @@ export const FillButton = ({
   onStatusChange?: (s: "idle" | "loading" | "success" | "error") => void
 }) => {
   const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "error" | "noform"
+    "idle" | "loading" | "success" | "error" | "noform" | "nodata"
   >("idle")
   const [dataSource, setDataSource] = useState<"custom" | "generated" | null>(
     null
@@ -22,10 +23,12 @@ export const FillButton = ({
     try {
       setStatus("loading")
       if (onStatusChange) onStatusChange("loading")
+
       const response = await chrome.runtime.sendMessage({
         type: "TRIGGER_AUTOFILL",
         action: "fillCredentials"
       })
+
       if (response?.success) {
         const total = response.total ?? 0
         setDataSource(response.source || null)
@@ -42,11 +45,27 @@ export const FillButton = ({
               total: response.total ?? 0
             })
         }
+
+        // Reset status after 3 seconds
+        setTimeout(() => {
+          setStatus("idle")
+          setDataSource(null)
+          if (onStatusChange) onStatusChange("idle")
+        }, 3000)
       } else {
-        setStatus("error")
+        // Determine error type based on response
+        const isAiDisabled = response?.aiEnabled === false
+        setStatus(isAiDisabled ? "nodata" : "error")
         setDataSource(null)
         if (onStatusChange) onStatusChange("error")
         if (onResult) onResult({ filled: 0, total: 0 })
+
+        // Reset status after 3 seconds
+        setTimeout(() => {
+          setStatus("idle")
+          setDataSource(null)
+          if (onStatusChange) onStatusChange("idle")
+        }, 3000)
       }
     } catch (error) {
       console.error("Autofill error:", error)
@@ -54,12 +73,14 @@ export const FillButton = ({
       setDataSource(null)
       if (onStatusChange) onStatusChange("error")
       if (onResult) onResult({ filled: 0, total: 0 })
+
+      // Reset status after 3 seconds
+      setTimeout(() => {
+        setStatus("idle")
+        setDataSource(null)
+        if (onStatusChange) onStatusChange("idle")
+      }, 3000)
     }
-    setTimeout(() => {
-      setStatus("idle")
-      setDataSource(null)
-      if (onStatusChange) onStatusChange("idle")
-    }, 3000)
   }
   return (
     <section id="fill-button flex ">
@@ -82,11 +103,11 @@ export const FillButton = ({
         {status === "success" && (
           <span
             aria-label="filled"
-            className="plasmo-text-green-500 plasmo-flex plasmo-items-center plasmo-gap-2">
-            <Check className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse" />
-            <span className="plasmo-text-sm plasmo-text-green-600">
+            className="text-green-500 flex items-center gap-2">
+            <Check className="w-5 h-5 animate-pulse" />
+            <span className="text-sm text-green-600">
               Filled
-              {dataSource === "generated" && " (AI Generated)"}
+              {dataSource === "generated" && " (Auto Generated)"}
               {dataSource === "custom" && " (Custom Data)"}
             </span>
           </span>
@@ -94,10 +115,21 @@ export const FillButton = ({
         {status === "error" && (
           <span
             aria-label="error"
-            className="plasmo-text-red-500 plasmo-flex plasmo-items-center plasmo-gap-2">
-            <X className="plasmo-w-5 plasmo-h-5 plasmo-animate-pulse" />
-            <span className="plasmo-text-sm plasmo-text-red-600">
-              No Form Detected
+            className="text-red-500 flex items-center gap-2">
+            <X className="w-5 h-5 animate-pulse" />
+            <span className="text-sm text-red-600">
+              Failed to generate AI data. Try refresh data or toggle AI mode off
+              and on below.
+            </span>
+          </span>
+        )}
+        {status === "nodata" && (
+          <span
+            aria-label="nodata"
+            className="text-orange-500 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 animate-pulse" />
+            <span className="text-sm text-orange-600">
+              No custom data. Add data or enable AI mode.
             </span>
           </span>
         )}

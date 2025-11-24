@@ -12,6 +12,34 @@ export type FieldName =
   | "country"
   | "phone"
   | "dob"
+  | "title"
+  | "middlename"
+  | "middleinitial"
+  | "fullname"
+  | "company"
+  | "position"
+  | "address1"
+  | "address2"
+  | "homephone"
+  | "workphone"
+  | "fax"
+  | "cellphone"
+  | "website"
+  | "userid"
+  | "creditcardtype"
+  | "creditcardnumber"
+  | "cardverificationcode"
+  | "cardexpiration"
+  | "cardusername"
+  | "cardissuingbank"
+  | "cardcustomerservicephone"
+  | "ssn"
+  | "driverslicense"
+  | "age"
+  | "birthplace"
+  | "income"
+  | "custommessage"
+  | "comments"
 
 export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
   gender: [
@@ -47,33 +75,37 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
     "username",
     "user name",
     "user-name",
-    "user_name",
-    "user",
-    "login",
-    "login name",
-    "account",
-    "account name",
-    "usr",
-    "user_id",
-    "userid",
-    "handle",
-    "nickname",
-    "profile name",
-    "screen name",
-    "loginid",
-    "login-id",
-    "uname",
-    "userhandle",
-    "display name",
-    "public name",
-    "member id",
-    "memberid",
-    "customer id",
-    "portal id",
-    "useraccount",
-    "accountid"
+    "user_name"
+    // "user",
+    // "login",
+    // "login name",
+    // "account",
+    // "account name",
+    // "usr",
+    // "user_id",
+    // "userid",
+    // "handle",
+    // "nickname",
+    // "profile name",
+    // "screen name",
+    // "loginid",
+    // "login-id",
+    // "uname",
+    // "userhandle",
+    // "display name",
+    // "public name",
+    // "member id",
+    // "memberid",
+    // "customer id",
+    // "portal id",
+    // "useraccount",
+    // "accountid"
   ],
   email: [
+    "appleId",
+    "appleid",
+    "apple_id",
+    "apple-id",
     "email",
     "e-mail",
     "e mail",
@@ -100,7 +132,9 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
     "emailinput",
     "email-addr",
     "sign-in email",
-    "register email"
+    "register email",
+    "account email",
+    "login email"
   ],
   password: [
     "password",
@@ -125,7 +159,22 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
     "passkey",
     "accountpin",
     "userpin",
-    "pincode"
+    "pincode",
+    "confirm password",
+    "confirmpassword",
+    "confirm-password",
+    "confirm_password",
+    "password confirmation",
+    "verify password",
+    "verifypassword",
+    "retype password",
+    "retypepassword",
+    "repeat password",
+    "repeatpassword",
+    "password again",
+    "passwordagain",
+    "re-enter password",
+    "reenterpassword"
   ],
   firstname: [
     "first name",
@@ -136,7 +185,6 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
     "f name",
     "forename",
     "first",
-    "user first name",
     "customer first name",
     "personal name",
     "first-name",
@@ -174,6 +222,7 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
     "surnamefield"
   ],
   phone: [
+    "phoneNumber",
     "phone",
     "phone number",
     "mobile",
@@ -340,5 +389,131 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
     "dobinput",
     "birth info",
     "birth-information"
-  ]
+  ],
+  title: [
+    "title",
+    "salutation",
+    "mr",
+    "mrs",
+    "ms",
+    "dr",
+    "hon",
+    "prefix",
+    "name title",
+    "titlefield",
+    "title select"
+  ],
+  middlename: [
+    "middle name",
+    "middlename",
+    "mname",
+    "middle initial",
+    "middle-initial",
+    "middle_initial",
+    "mi",
+    "middle"
+  ],
+  middleinitial: ["middle initial", "m.i.", "mi", "middleinitial"],
+  fullname: [
+    "full name",
+    "fullname",
+    "complete name",
+    "completename",
+    "name full",
+    "full-name",
+    "full_name"
+  ],
+  company: [
+    "company",
+    "company name",
+    "organization",
+    "organisation",
+    "employer",
+    "companyname",
+    "org",
+    "business"
+  ],
+  position: [
+    "position",
+    "job title",
+    "role",
+    "occupation",
+    "job",
+    "title at",
+    "positiontitle",
+    "jobtitle"
+  ],
+  address1: ["address1", "address line 1", "street address", "address_1"],
+  address2: ["address2", "address line 2", "apt", "suite", "unit"],
+  homephone: ["home phone", "homephone", "home tel", "telephone home"],
+  workphone: ["work phone", "work telephone", "office phone", "worktel"],
+  fax: ["fax", "fax number", "facsimile"],
+  cellphone: ["cell", "cell phone", "mobile", "mobile phone", "cellphone"],
+  website: ["website", "web site", "url", "site", "website url", "homepage"],
+  userid: [
+    "user id",
+    "userid",
+    "user-id",
+    "useridentifier",
+    "customer id",
+    "member id"
+  ],
+  creditcardtype: [
+    "card type",
+    "credit card type",
+    "cardtype",
+    "select card type",
+    "cc type",
+    "card brand"
+  ],
+  creditcardnumber: [
+    "card number",
+    "credit card number",
+    "cc number",
+    "cardno",
+    "card_number",
+    "creditcard",
+    "cardnumber"
+  ],
+  cardverificationcode: [
+    "cvv",
+    "cvc",
+    "card verification",
+    "security code",
+    "card code",
+    "cardverificationcode",
+    "card security code"
+  ],
+  cardexpiration: [
+    "expiry",
+    "expiration",
+    "exp date",
+    "exp",
+    "expiration date",
+    "card expiration",
+    "exp_month",
+    "exp_year"
+  ],
+  cardusername: ["cardholder", "card user", "name on card", "card name"],
+  cardissuingbank: ["issuing bank", "card issuing bank", "bank name"],
+  cardcustomerservicephone: [
+    "customer service",
+    "card customer service",
+    "bank phone",
+    "customer support phone"
+  ],
+  ssn: ["ssn", "social security", "social security number", "ssn field"],
+  driverslicense: [
+    "driver",
+    "driver license",
+    "drivers license",
+    "licence",
+    "license number",
+    "driver_license"
+  ],
+  age: ["age", "your age", "years old", "age field"],
+  birthplace: ["birth place", "birthplace", "place of birth", "born in"],
+  income: ["income", "annual income", "salary", "gross income", "net income"],
+  custommessage: ["custom message", "message", "note", "personal message"],
+  comments: ["comments", "comment", "remarks", "notes", "additional info"]
 }
