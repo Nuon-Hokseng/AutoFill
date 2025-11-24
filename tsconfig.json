@@ -2,10 +2,13 @@
   "exclude": ["node_modules"],
   "include": [".plasmo/index.d.ts", "./**/*.ts", "./**/*.tsx"],
   "compilerOptions": {
-    "jsx": "react",
+    
     "paths": {
       "~*": ["./src/*"]
     },
-    "baseUrl": "."
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "ignoreDeprecations": "6.0" // Suppress deprecation warnings for TypeScript 5.x compatibility
+
   }
 }

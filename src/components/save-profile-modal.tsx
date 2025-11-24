@@ -37,42 +37,42 @@ const SaveProfileModal: React.FC<SaveProfileModalProps> = ({
 
   return (
     <div
-      className="plasmo-fixed plasmo-top-4 plasmo-right-4 plasmo-z-[999999] plasmo-pointer-events-none"
+      className="fixed top-4 right-4 z-[999999] pointer-events-none"
       style={{
         fontFamily: "system-ui, -apple-system, sans-serif"
       }}>
       <div
-        className={`plasmo-bg-white plasmo-rounded-lg plasmo-shadow-2xl plasmo-border plasmo-border-gray-200 plasmo-pointer-events-auto plasmo-transition-all plasmo-duration-200 plasmo-w-80 ${
+        className={`bg-white rounded-lg shadow-2xl border border-gray-200 pointer-events-auto transition-all duration-200 w-80 ${
           isVisible
-            ? "plasmo-opacity-100 plasmo-translate-x-0"
-            : "plasmo-opacity-0 plasmo-translate-x-4"
+            ? "opacity-100 translate-x-0"
+            : "opacity-0 translate-x-4"
         }`}
         style={{
           boxShadow:
             "0 10px 40px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1)"
         }}>
-        <div className="plasmo-flex plasmo-items-center plasmo-gap-3 plasmo-p-4">
-          <div className="plasmo-w-8 plasmo-h-8 plasmo-rounded-full plasmo-bg-blue-500 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-flex-shrink-0">
-            <Key className="plasmo-w-4 plasmo-h-4 plasmo-text-white" />
+        <div className="flex items-center gap-3 p-4">
+          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+            <Key className="w-4 h-4 text-white" />
           </div>
-          <div className="plasmo-flex-1 plasmo-min-w-0">
-            <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-gray-900">
               Save password for{" "}
-              <span className="plasmo-font-semibold">{website}</span>?
+              <span className="font-semibold">{website}</span>?
             </div>
-            <div className="plasmo-text-xs plasmo-text-gray-500 plasmo-mt-0.5">
+            <div className="text-xs text-gray-500 mt-0.5">
               {filledCount} field{filledCount !== 1 ? "s" : ""} filled
             </div>
           </div>
-          <div className="plasmo-flex plasmo-gap-2 plasmo-flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0">
             <button
               onClick={handleCancel}
-              className="plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-text-gray-600 plasmo-hover:text-gray-800 plasmo-hover:bg-gray-100 plasmo-rounded plasmo-transition-colors plasmo-font-medium">
+              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors font-medium">
               Never
             </button>
             <button
               onClick={handleSave}
-              className="plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-bg-blue-600 plasmo-text-white plasmo-rounded plasmo-hover:bg-blue-700 plasmo-transition-colors plasmo-font-medium plasmo-flex plasmo-items-center plasmo-gap-1.5">
+              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium flex items-center gap-1.5">
               Save
             </button>
           </div>

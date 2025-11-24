@@ -63,9 +63,9 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
         setSelectedProfile(null)
       }
       setStatus(
-        <span className="plasmo-flex plasmo-items-center plasmo-gap-2">
-          <Trash2 className="plasmo-w-4 plasmo-h-4 plasmo-text-green-600" />
-          <span className="plasmo-text-gray-700">Profile deleted</span>
+        <span className="flex items-center gap-2">
+          <Trash2 className="w-4 h-4 text-green-600" />
+          <span className="text-gray-700">Profile deleted</span>
         </span>
       )
       setTimeout(() => setStatus(""), 2000)
@@ -84,9 +84,9 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
       setSelectedProfile({ ...selectedProfile, data: editedData })
       setIsEditing(false)
       setStatus(
-        <span className="plasmo-flex plasmo-items-center plasmo-gap-2">
-          <Check className="plasmo-w-4 plasmo-h-4 plasmo-text-green-600" />
-          <span className="plasmo-text-gray-700">Profile updated</span>
+        <span className="flex items-center gap-2">
+          <Check className="w-4 h-4 text-green-600" />
+          <span className="text-gray-700">Profile updated</span>
         </span>
       )
       setTimeout(() => setStatus(""), 2000)
@@ -99,9 +99,9 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
       setSelectedProfile(null)
       setShowClearConfirm(false)
       setStatus(
-        <span className="plasmo-flex plasmo-items-center plasmo-gap-2">
-          <Check className="plasmo-w-4 plasmo-h-4 plasmo-text-green-600" />
-          <span className="plasmo-text-gray-700">All profiles cleared</span>
+        <span className="flex items-center gap-2">
+          <Check className="w-4 h-4 text-green-600" />
+          <span className="text-gray-700">All profiles cleared</span>
         </span>
       )
       setTimeout(() => setStatus(""), 2000)
@@ -122,18 +122,18 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
         console.log("📨 Response from background:", response)
         if (response?.success) {
           setStatus(
-            <span className="plasmo-flex plasmo-items-center plasmo-gap-2">
-              <Check className="plasmo-w-4 plasmo-h-4 plasmo-text-green-600" />
-              <span className="plasmo-text-gray-700">
+            <span className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-green-600" />
+              <span className="text-gray-700">
                 Profile data filled successfully
               </span>
             </span>
           )
         } else {
           setStatus(
-            <span className="plasmo-flex plasmo-items-center plasmo-gap-2">
-              <X className="plasmo-w-4 plasmo-h-4 plasmo-text-red-600" />
-              <span className="plasmo-text-gray-700">
+            <span className="flex items-center gap-2">
+              <X className="w-4 h-4 text-red-600" />
+              <span className="text-gray-700">
                 {response?.error || "Failed to fill profile"}
               </span>
             </span>
@@ -169,97 +169,97 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
   // List view
   if (!selectedProfile) {
     return (
-      <div className="plasmo-w-80 plasmo-bg-white plasmo-rounded-lg plasmo-shadow-2xl plasmo-border plasmo-border-gray-200 plasmo-overflow-hidden">
-        <div className="plasmo-p-4 plasmo-space-y-4">
+      <div className="w-80 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
+        <div className="p-4 space-y-4">
           {/* Clear All Confirmation Modal */}
           {showClearConfirm && (
-            <div className="plasmo-bg-red-50 plasmo-border-2 plasmo-border-red-300 plasmo-rounded-lg plasmo-p-3 plasmo-mb-2">
-              <div className="plasmo-flex plasmo-items-start plasmo-gap-2 plasmo-mb-3">
-                <Trash2 className="plasmo-w-5 plasmo-h-5 plasmo-text-red-600 plasmo-flex-shrink-0 plasmo-mt-0.5" />
-                <div className="plasmo-flex-1">
-                  <h3 className="plasmo-text-sm plasmo-font-semibold plasmo-text-gray-900 plasmo-mb-1">
+            <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 mb-2">
+              <div className="flex items-start gap-2 mb-3">
+                <Trash2 className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-1">
                     Clear All Profiles?
                   </h3>
-                  <p className="plasmo-text-xs plasmo-text-gray-700">
+                  <p className="text-xs text-gray-700">
                     This will permanently delete all {profiles.length} saved
                     profile{profiles.length !== 1 ? "s" : ""}. This action
                     cannot be undone.
                   </p>
                 </div>
               </div>
-              <div className="plasmo-flex plasmo-gap-2">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setShowClearConfirm(false)}
-                  className="plasmo-flex-1 plasmo-px-3 plasmo-py-1.5 plasmo-bg-white plasmo-text-gray-700 plasmo-rounded plasmo-text-xs plasmo-font-medium plasmo-border plasmo-border-gray-300">
+                  className="flex-1 px-3 py-1.5 bg-white text-gray-700 rounded text-xs font-medium border border-gray-300">
                   Cancel
                 </button>
                 <button
                   onClick={handleClearAll}
-                  className="plasmo-flex-1 plasmo-px-3 plasmo-py-1.5 plasmo-bg-red-600 plasmo-text-white plasmo-rounded plasmo-text-xs plasmo-font-medium">
+                  className="flex-1 px-3 py-1.5 bg-red-600 text-white rounded text-xs font-medium">
                   Delete All
                 </button>
               </div>
             </div>
           )}
 
-          <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-gap-2">
-            <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <button
                 onClick={goBack}
-                className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600">
+                className="p-1 rounded text-gray-600">
                 <ArrowLeft size={16} />
               </button>
-              <h1 className="plasmo-text-sm plasmo-font-semibold plasmo-text-gray-800">
+              <h1 className="text-sm font-semibold text-gray-800">
                 Website Profiles
               </h1>
             </div>
             {profiles.length > 0 && !showClearConfirm && (
               <button
                 onClick={() => setShowClearConfirm(true)}
-                className="plasmo-text-xs plasmo-text-red-600 hover:plasmo-text-red-700">
+                className="text-xs text-red-600 hover:text-red-700">
                 Clear All
               </button>
             )}
           </div>
 
           {profiles.length === 0 ? (
-            <div className="plasmo-text-center plasmo-py-8 plasmo-text-gray-500">
-              <Globe className="plasmo-w-12 plasmo-h-12 plasmo-mx-auto plasmo-mb-2 plasmo-text-gray-300" />
-              <p className="plasmo-text-sm">No profiles yet</p>
-              <p className="plasmo-text-xs plasmo-mt-1">
+            <div className="text-center py-8 text-gray-500">
+              <Globe className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">No profiles yet</p>
+              <p className="text-xs mt-1">
                 Autofill data on websites to create profiles
               </p>
             </div>
           ) : (
-            <div className="plasmo-space-y-2 plasmo-max-h-96 plasmo-overflow-y-auto">
+            <div className="space-y-2 max-h-96 overflow-y-auto">
               {profiles.map((profile) => (
                 <div
                   key={profile.id}
-                  className="plasmo-p-3 plasmo-border plasmo-border-gray-200 plasmo-rounded-lg hover:plasmo-bg-gray-50">
-                  <div className="plasmo-flex plasmo-items-start plasmo-justify-between plasmo-gap-2 plasmo-mb-2">
+                  className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <div className="flex items-start justify-between gap-2 mb-2">
                     <div
-                      className="plasmo-flex-1 plasmo-cursor-pointer"
+                      className="flex-1 cursor-pointer"
                       onClick={() => setSelectedProfile(profile)}>
-                      <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
-                        <Globe size={14} className="plasmo-text-blue-600" />
-                        <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-800">
+                      <div className="flex items-center gap-2">
+                        <Globe size={14} className="text-blue-600" />
+                        <h3 className="text-sm font-medium text-gray-800">
                           {getDomain(profile.url)}
                         </h3>
                       </div>
-                      <p className="plasmo-text-xs plasmo-text-gray-500 plasmo-mt-1">
+                      <p className="text-xs text-gray-500 mt-1">
                         {formatDate(profile.timestamp)}
                       </p>
-                      <p className="plasmo-text-xs plasmo-text-gray-600 plasmo-mt-1">
+                      <p className="text-xs text-gray-600 mt-1">
                         {profile.filledFields.length} fields filled
                       </p>
                     </div>
-                    <div className="plasmo-flex plasmo-flex-col plasmo-gap-1">
+                    <div className="flex flex-col gap-1">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           handleUseProfile(profile)
                         }}
-                        className="plasmo-p-1.5 plasmo-text-blue-600 hover:plasmo-bg-blue-50 plasmo-rounded"
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
                         title="Use this profile">
                         <Play size={14} />
                       </button>
@@ -268,7 +268,7 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
                           e.stopPropagation()
                           handleDelete(profile.id)
                         }}
-                        className="plasmo-p-1.5 plasmo-text-gray-400 hover:plasmo-text-red-600 hover:plasmo-bg-red-50 plasmo-rounded"
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
                         title="Delete profile">
                         <Trash2 size={14} />
                       </button>
@@ -280,7 +280,7 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
           )}
 
           {status && (
-            <div className="plasmo-text-center plasmo-text-sm">{status}</div>
+            <div className="text-center text-sm">{status}</div>
           )}
         </div>
       </div>
@@ -289,23 +289,23 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
 
   // Detail/Edit view
   return (
-    <div className="plasmo-w-80 plasmo-bg-white plasmo-rounded-lg plasmo-shadow-2xl plasmo-border plasmo-border-gray-200 plasmo-overflow-hidden">
-      <div className="plasmo-p-4 plasmo-space-y-4">
-        <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-gap-2">
-          <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+    <div className="w-80 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
+      <div className="p-4 space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => {
                 setSelectedProfile(null)
                 setIsEditing(false)
               }}
-              className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600">
+              className="p-1 rounded text-gray-600">
               <ArrowLeft size={16} />
             </button>
             <div>
-              <h1 className="plasmo-text-sm plasmo-font-semibold plasmo-text-gray-800">
+              <h1 className="text-sm font-semibold text-gray-800">
                 {getDomain(selectedProfile.url)}
               </h1>
-              <p className="plasmo-text-xs plasmo-text-gray-500">
+              <p className="text-xs text-gray-500">
                 {formatDate(selectedProfile.timestamp)}
               </p>
             </div>
@@ -319,12 +319,12 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
                 setIsEditing(true)
               }
             }}
-            className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600 hover:plasmo-bg-gray-100">
+            className="p-1 rounded text-gray-600 hover:bg-gray-100">
             {isEditing ? <X size={16} /> : <Edit2 size={16} />}
           </button>
         </div>
 
-        <div className="plasmo-space-y-2 plasmo-max-h-96 plasmo-overflow-y-auto plasmo-pr-2">
+        <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
           {selectedProfile.filledFields.map((field) => {
             const value = isEditing
               ? editedData[field]
@@ -333,11 +333,11 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
             const isVisible = fieldVisibility[field]
 
             return (
-              <div key={field} className="plasmo-space-y-1">
-                <label className="plasmo-text-xs plasmo-font-medium plasmo-text-gray-600 plasmo-capitalize">
+              <div key={field} className="space-y-1">
+                <label className="text-xs font-medium text-gray-600 capitalize">
                   {field.replace(/([A-Z])/g, " $1").trim()}
                 </label>
-                <div className="plasmo-relative">
+                <div className="relative">
                   {isEditing ? (
                     <input
                       type={isSensitive && !isVisible ? "password" : "text"}
@@ -348,17 +348,17 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
                           [field]: e.target.value
                         })
                       }
-                      className="plasmo-w-full plasmo-text-sm plasmo-px-2 plasmo-py-1.5 plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-pr-8"
+                      className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded pr-8"
                     />
                   ) : (
-                    <div className="plasmo-text-sm plasmo-px-2 plasmo-py-1.5 plasmo-bg-gray-50 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-pr-8 plasmo-break-all">
+                    <div className="text-sm px-2 py-1.5 bg-gray-50 border border-gray-200 rounded pr-8 break-all">
                       {isSensitive && !isVisible ? "••••••••" : value || "—"}
                     </div>
                   )}
                   {isSensitive && (
                     <button
                       onClick={() => toggleFieldVisibility(field)}
-                      className="plasmo-absolute plasmo-right-2 plasmo-top-1/2 plasmo--translate-y-1/2 plasmo-text-gray-500 hover:plasmo-text-gray-700">
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
                       {isVisible ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                   )}
@@ -369,22 +369,22 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
         </div>
 
         {isEditing && (
-          <div className="plasmo-flex plasmo-gap-2 plasmo-pt-2 plasmo-border-t plasmo-border-gray-200">
+          <div className="flex gap-2 pt-2 border-t border-gray-200">
             <button
               onClick={() => setIsEditing(false)}
-              className="plasmo-flex-1 plasmo-py-2 plasmo-text-sm plasmo-bg-gray-100 plasmo-rounded">
+              className="flex-1 py-2 text-sm bg-gray-100 rounded">
               Cancel
             </button>
             <button
               onClick={handleSaveEdit}
-              className="plasmo-flex-1 plasmo-py-2 plasmo-text-sm plasmo-bg-blue-600 plasmo-text-white plasmo-rounded">
+              className="flex-1 py-2 text-sm bg-blue-600 text-white rounded">
               Save Changes
             </button>
           </div>
         )}
 
         {status && (
-          <div className="plasmo-text-center plasmo-text-sm">{status}</div>
+          <div className="text-center text-sm">{status}</div>
         )}
       </div>
     </div>
