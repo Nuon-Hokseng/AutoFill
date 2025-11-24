@@ -2,11 +2,7 @@
 // import "~style.css"
 import { NavLink } from "react-router-dom"
 import { Button } from "~features/components/ui/button"
-<<<<<<< HEAD
-
-=======
 import React = require("react")
->>>>>>> seng
 export function Header() {
   return (
     <header className="border-b bg-card">

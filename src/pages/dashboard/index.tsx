@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import React from "react"
-
-export default function Dashboard() {
-  return (
-    <div>
-      <h1>Dashboard</h1>
-    </div>
-  )
-}
-=======
 import { Calendar, FileText, Globe, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -191,4 +180,3 @@ export default function Dashboard() {
     </div>
   )
 }
->>>>>>> seng
