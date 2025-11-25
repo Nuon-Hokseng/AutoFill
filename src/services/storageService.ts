@@ -3,10 +3,8 @@ import { getCachedOrGenerateData } from "./geminiService"
 
 export interface AutofillData {
   // Basic Info
-  title?: string
   firstname?: string
   middlename?: string
-  middleinitial?: string
   lastname?: string
   fullname?: string
 
@@ -20,8 +18,6 @@ export interface AutofillData {
   dob?: string
   age?: string
   birthplace?: string
-  ssn?: string
-  driverslicense?: string
 
   // Company/Work
   company?: string
@@ -38,27 +34,10 @@ export interface AutofillData {
 
   // Phone Numbers
   homephone?: string
-  workphone?: string
-  fax?: string
   cellphone?: string
 
   // Web
   website?: string
-  userid?: string
-
-  // Payment Info
-  creditcardtype?: string
-  creditcardnumber?: string
-  cardverificationcode?: string
-  cardexpiration?: string
-  cardusername?: string
-  cardissuingbank?: string
-  cardcustomerservicephone?: string
-
-  // Additional
-  income?: string
-  custommessage?: string
-  comments?: string
 }
 
 /**

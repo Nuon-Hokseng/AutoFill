@@ -17,10 +17,8 @@ import React = require("react")
 
 const initialFormState = {
   // Basic Info
-  title: "",
   firstname: "",
   middlename: "",
-  middleinitial: "",
   lastname: "",
   fullname: "",
 
@@ -28,15 +26,12 @@ const initialFormState = {
   username: "",
   email: "",
   password: "",
-  userid: "",
 
   // Personal
   gender: "",
   dob: "",
   age: "",
   birthplace: "",
-  ssn: "",
-  driverslicense: "",
 
   // Company
   company: "",
@@ -53,24 +48,8 @@ const initialFormState = {
 
   // Contact
   homephone: "",
-  workphone: "",
   cellphone: "",
-  fax: "",
-  website: "",
-
-  // Payment
-  creditcardtype: "",
-  creditcardnumber: "",
-  cardverificationcode: "",
-  cardexpiration: "",
-  cardusername: "",
-  cardissuingbank: "",
-  cardcustomerservicephone: "",
-
-  // Other
-  income: "",
-  custommessage: "",
-  comments: ""
+  website: ""
 }
 
 export default function CustomTab({
@@ -102,15 +81,7 @@ export default function CustomTab({
   >("two-column")
 
   // Define which fields are sensitive and should have eye toggle
-  const sensitiveFields = new Set([
-    "password",
-    "ssn",
-    "driverslicense",
-    "creditcardnumber",
-    "cardverificationcode",
-    "cardexpiration",
-    "cardcustomerservicephone"
-  ])
+  const sensitiveFields = new Set(["password"])
 
   const toggleFieldVisibility = (fieldKey: string) => {
     setFieldVisibility((prev) => ({
@@ -312,23 +283,15 @@ export default function CustomTab({
 
   const inputFieldGroups = {
     "Basic Info": [
-      {
-        key: "title",
-        label: "Title",
-        type: "select",
-        options: ["", "Mr", "Mrs", "Ms", "Dr", "Prof"]
-      },
       { key: "firstname", label: "First Name", type: "text" },
       { key: "middlename", label: "Middle Name", type: "text" },
-      { key: "middleinitial", label: "Middle Initial", type: "text" },
       { key: "lastname", label: "Last Name", type: "text" },
       { key: "fullname", label: "Full Name", type: "text" }
     ],
     Account: [
       { key: "username", label: "Username", type: "text" },
       { key: "email", label: "Email", type: "email" },
-      { key: "password", label: "Password", type: "password" },
-      { key: "userid", label: "User ID", type: "text" }
+      { key: "password", label: "Password", type: "password" }
     ],
     Personal: [
       {
@@ -339,9 +302,7 @@ export default function CustomTab({
       },
       { key: "dob", label: "Date of Birth", type: "date" },
       { key: "age", label: "Age", type: "text" },
-      { key: "birthplace", label: "Birth Place", type: "text" },
-      { key: "ssn", label: "SSN", type: "text" },
-      { key: "driverslicense", label: "Driver License", type: "text" }
+      { key: "birthplace", label: "Birth Place", type: "text" }
     ],
     Company: [
       { key: "company", label: "Company", type: "text" },
@@ -358,33 +319,8 @@ export default function CustomTab({
     ],
     Contact: [
       { key: "homephone", label: "Home Phone", type: "tel" },
-      { key: "workphone", label: "Work Phone", type: "tel" },
       { key: "cellphone", label: "Cell Phone", type: "tel" },
-      { key: "fax", label: "Fax", type: "tel" },
       { key: "website", label: "Website", type: "url" }
-    ],
-    Payment: [
-      {
-        key: "creditcardtype",
-        label: "Card Type",
-        type: "select",
-        options: ["", "Visa", "Mastercard", "Amex", "Discover"]
-      },
-      { key: "creditcardnumber", label: "Card Number", type: "text" },
-      { key: "cardverificationcode", label: "CVV", type: "text" },
-      { key: "cardexpiration", label: "Expiration (MM/YY)", type: "text" },
-      { key: "cardusername", label: "Name on Card", type: "text" },
-      { key: "cardissuingbank", label: "Issuing Bank", type: "text" },
-      {
-        key: "cardcustomerservicephone",
-        label: "Customer Service",
-        type: "tel"
-      }
-    ],
-    Other: [
-      { key: "income", label: "Income", type: "text" },
-      { key: "custommessage", label: "Custom Message", type: "text" },
-      { key: "comments", label: "Comments", type: "text" }
     ]
   }
 

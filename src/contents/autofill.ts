@@ -6,29 +6,18 @@ import {
   detectAddressLine2Field,
   detectAgeField,
   detectBirthPlaceField,
-  detectCardExpirationField,
-  detectCardVerificationCodeField,
   detectCellPhoneField,
   detectCityField,
-  detectCommentsField,
   detectCompanyField,
   detectCountryField,
-  detectCreditCardNumberField,
   detectDOBFields,
-  detectDriverLicenseField,
-  detectFaxField,
   detectFullNameField,
   detectGenderFields,
   detectHomePhoneField,
-  detectIncomeField,
   detectMiddleNameField,
   detectPositionField,
-  detectSSNField,
   detectStateField,
-  // New field detectors
-  detectTitleField,
   detectWebsiteField,
-  detectWorkPhoneField,
   detectZipcodeField,
   fillAddressLine,
   fillCompany,
@@ -42,7 +31,6 @@ import {
   fillPassword,
   fillPhoneField,
   fillPosition,
-  fillTitle,
   fillUsername,
   fillWebsite,
   genericFill,
@@ -100,7 +88,6 @@ function detectCredentialFields() {
   const dobSelect = detectDOBFields()
 
   // Detect new fields
-  const titleEl = detectTitleField(inputs)
   const middlenameEl = detectMiddleNameField(inputs)
   const fullnameEl = detectFullNameField(inputs)
   const companyEl = detectCompanyField(inputs)
@@ -113,19 +100,10 @@ function detectCredentialFields() {
   const countryEl = detectCountryField(inputs)
   const phoneEl = scored.phone as HTMLInputElement | null // Generic phone field
   const homephoneEl = detectHomePhoneField(inputs)
-  const workphoneEl = detectWorkPhoneField(inputs)
-  const faxEl = detectFaxField(inputs)
   const cellphoneEl = detectCellPhoneField(inputs)
   const websiteEl = detectWebsiteField(inputs)
-  const creditcardnumberEl = detectCreditCardNumberField(inputs)
-  const cvvEl = detectCardVerificationCodeField(inputs)
-  const cardexpirationEl = detectCardExpirationField(inputs)
-  const ssnEl = detectSSNField(inputs)
-  const driverslicenseEl = detectDriverLicenseField(inputs)
   const ageEl = detectAgeField(inputs)
   const birthplaceEl = detectBirthPlaceField(inputs)
-  const incomeEl = detectIncomeField(inputs)
-  const commentsEl = detectCommentsField(inputs)
 
   return {
     emailEl,
@@ -137,7 +115,6 @@ function detectCredentialFields() {
     genderRadios,
     dobSelect,
     // New fields
-    titleEl,
     middlenameEl,
     fullnameEl,
     companyEl,
@@ -150,19 +127,10 @@ function detectCredentialFields() {
     countryEl,
     phoneEl,
     homephoneEl,
-    workphoneEl,
-    faxEl,
     cellphoneEl,
     websiteEl,
-    creditcardnumberEl,
-    cvvEl,
-    cardexpirationEl,
-    ssnEl,
-    driverslicenseEl,
     ageEl,
-    birthplaceEl,
-    incomeEl,
-    commentsEl
+    birthplaceEl
   }
 }
 
@@ -276,7 +244,6 @@ async function fillCredentials(credentials: {
   gender?: string
   dob?: string
   // New fields
-  title?: string
   middlename?: string
   fullname?: string
   company?: string
@@ -288,19 +255,10 @@ async function fillCredentials(credentials: {
   zipcode?: string
   country?: string
   homephone?: string
-  workphone?: string
-  fax?: string
   cellphone?: string
   website?: string
-  creditcardnumber?: string
-  cardverificationcode?: string
-  cardexpiration?: string
-  ssn?: string
-  driverslicense?: string
   age?: string
   birthplace?: string
-  income?: string
-  comments?: string
 }) {
   try {
     // Clear previous tracking
@@ -336,7 +294,6 @@ async function fillCredentials(credentials: {
       lastnameEL,
       genderRadios,
       dobSelect,
-      titleEl,
       middlenameEl,
       fullnameEl,
       companyEl,
@@ -349,19 +306,10 @@ async function fillCredentials(credentials: {
       countryEl,
       phoneEl,
       homephoneEl,
-      workphoneEl,
-      faxEl,
       cellphoneEl,
       websiteEl,
-      creditcardnumberEl,
-      cvvEl,
-      cardexpirationEl,
-      ssnEl,
-      driverslicenseEl,
       ageEl,
-      birthplaceEl,
-      incomeEl,
-      commentsEl
+      birthplaceEl
     } = detection
 
     let fieldsCount = 0
@@ -373,7 +321,6 @@ async function fillCredentials(credentials: {
       usernameEl,
       emailEl,
       passwordEl,
-      titleEl,
       middlenameEl,
       fullnameEl,
       companyEl,
@@ -385,19 +332,10 @@ async function fillCredentials(credentials: {
       zipcodeEl,
       countryEl,
       homephoneEl,
-      workphoneEl,
-      faxEl,
       cellphoneEl,
       websiteEl,
-      creditcardnumberEl,
-      cvvEl,
-      cardexpirationEl,
-      ssnEl,
-      driverslicenseEl,
       ageEl,
       birthplaceEl,
-      incomeEl,
-      commentsEl,
       genderRadios &&
         (genderRadios.male || genderRadios.female || genderRadios.custom),
       dobSelect && (dobSelect.day || dobSelect.month || dobSelect.year)
@@ -405,14 +343,6 @@ async function fillCredentials(credentials: {
     const totalDetected = detectedElements.filter(Boolean).length
 
     // Fill fields using specialized functions
-    if (titleEl && credentials.title) {
-      const success = await fillTitle(titleEl, credentials.title)
-      if (success) {
-        fieldsCount++
-        filledFieldsTracker["title"] = credentials.title
-      }
-    }
-
     // Fill username FIRST to prevent firstname from taking username fields
     if (usernameEl && credentials.username) {
       const success = await fillUsername(usernameEl, credentials.username)
@@ -586,22 +516,6 @@ async function fillCredentials(credentials: {
       }
     }
 
-    if (workphoneEl && credentials.workphone) {
-      const success = await fillPhoneField(workphoneEl, credentials.workphone)
-      if (success) {
-        fieldsCount++
-        filledFieldsTracker["workphone"] = credentials.workphone
-      }
-    }
-
-    if (faxEl && credentials.fax) {
-      const success = await fillPhoneField(faxEl, credentials.fax)
-      if (success) {
-        fieldsCount++
-        filledFieldsTracker["fax"] = credentials.fax
-      }
-    }
-
     if (cellphoneEl && credentials.cellphone) {
       const success = await fillPhoneField(cellphoneEl, credentials.cellphone)
       if (success) {
@@ -616,42 +530,7 @@ async function fillCredentials(credentials: {
       if (success) fieldsCount++
     }
 
-    // Payment fields
-    if (creditcardnumberEl && credentials.creditcardnumber) {
-      const success = await genericFill(
-        creditcardnumberEl,
-        credentials.creditcardnumber
-      )
-      if (success) fieldsCount++
-    }
-
-    if (cvvEl && credentials.cardverificationcode) {
-      const success = await genericFill(cvvEl, credentials.cardverificationcode)
-      if (success) fieldsCount++
-    }
-
-    if (cardexpirationEl && credentials.cardexpiration) {
-      const success = await genericFill(
-        cardexpirationEl,
-        credentials.cardexpiration
-      )
-      if (success) fieldsCount++
-    }
-
-    // Personal ID fields
-    if (ssnEl && credentials.ssn) {
-      const success = await genericFill(ssnEl, credentials.ssn)
-      if (success) fieldsCount++
-    }
-
-    if (driverslicenseEl && credentials.driverslicense) {
-      const success = await genericFill(
-        driverslicenseEl,
-        credentials.driverslicense
-      )
-      if (success) fieldsCount++
-    }
-
+    // Personal detail fields
     if (ageEl && credentials.age) {
       const success = await genericFill(ageEl, credentials.age)
       if (success) fieldsCount++
@@ -659,17 +538,6 @@ async function fillCredentials(credentials: {
 
     if (birthplaceEl && credentials.birthplace) {
       const success = await genericFill(birthplaceEl, credentials.birthplace)
-      if (success) fieldsCount++
-    }
-
-    // Additional fields
-    if (incomeEl && credentials.income) {
-      const success = await genericFill(incomeEl, credentials.income)
-      if (success) fieldsCount++
-    }
-
-    if (commentsEl && credentials.comments) {
-      const success = await genericFill(commentsEl, credentials.comments)
       if (success) fieldsCount++
     }
 

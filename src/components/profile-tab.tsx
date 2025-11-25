@@ -35,13 +35,7 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
   >({})
   const [showClearConfirm, setShowClearConfirm] = useState(false)
 
-  const sensitiveFields = new Set([
-    "password",
-    "ssn",
-    "driverslicense",
-    "creditcardnumber",
-    "cardverificationcode"
-  ])
+  const sensitiveFields = new Set(["password"])
 
   // Load profiles from storage
   useEffect(() => {
@@ -204,9 +198,7 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
 
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <button
-                onClick={goBack}
-                className="p-1 rounded text-gray-600">
+              <button onClick={goBack} className="p-1 rounded text-gray-600">
                 <ArrowLeft size={16} />
               </button>
               <h1 className="text-sm font-semibold text-gray-800">
@@ -279,9 +271,7 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
             </div>
           )}
 
-          {status && (
-            <div className="text-center text-sm">{status}</div>
-          )}
+          {status && <div className="text-center text-sm">{status}</div>}
         </div>
       </div>
     )
@@ -383,9 +373,7 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
           </div>
         )}
 
-        {status && (
-          <div className="text-center text-sm">{status}</div>
-        )}
+        {status && <div className="text-center text-sm">{status}</div>}
       </div>
     </div>
   )
