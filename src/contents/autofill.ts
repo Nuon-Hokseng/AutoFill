@@ -308,6 +308,22 @@ async function fillCredentials(credentials: {
       delete filledFieldsTracker[key]
     })
 
+    // Explicitly skip reCAPTCHA response fields (cannot legally be autofilled)
+    const recaptchaSelectors = [
+      'textarea[name="g-recaptcha-response"]',
+      'textarea[id="g-recaptcha-response"]',
+      'input[name="g-recaptcha-response"]',
+      'input[id="g-recaptcha-response"]',
+      ".g-recaptcha-response"
+    ]
+    const recaptchaFields = Array.from(
+      new Set(
+        recaptchaSelectors.flatMap((sel) =>
+          Array.from(document.querySelectorAll(sel))
+        )
+      )
+    ) as (HTMLInputElement | HTMLTextAreaElement)[]
+
     // Prefer a fresh detection pass (throttled) if available, otherwise fallback
     const detection = ensureFreshDetection() || detectCredentialFields()
 
@@ -446,7 +462,11 @@ async function fillCredentials(credentials: {
       }
     }
 
-    if (passwordEl && credentials.password) {
+    if (
+      passwordEl &&
+      credentials.password &&
+      !recaptchaFields.includes(passwordEl as any)
+    ) {
       const success = await fillPassword(passwordEl, credentials.password)
       if (success) {
         fieldsCount++

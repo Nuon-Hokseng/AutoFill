@@ -10,8 +10,6 @@ import {
   CardTitle
 } from "~features/components/ui/card"
 
-import React = require("react")
-
 interface ProfileEntry {
   id: string
   website: string

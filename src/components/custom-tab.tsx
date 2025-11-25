@@ -4,10 +4,7 @@ import {
   CheckCheck,
   Eye,
   EyeOff,
-  Info,
-  RefreshCw,
   Settings2,
-  Sparkles,
   Trash,
   Trash2,
   X
