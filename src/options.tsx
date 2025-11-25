@@ -81,8 +81,8 @@ export default function Options() {
         <Header />
         <main className="p-6">
           <Routes>
-            {/* Default route - redirect to dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* Default route - redirect to account */}
+            <Route path="/" element={<Navigate to="/account" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/custom-fields" element={<CustomFields />} />
             <Route path="/account" element={<Account />} />

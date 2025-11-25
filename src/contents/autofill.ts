@@ -715,9 +715,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const source = msg.source || "unknown"
 
     if (data) {
-      // Wait for form to be ready if needed
       waitForElements(3000).then(() => {
-        // Small additional delay for any animations/transitions
         setTimeout(() => {
           fillCredentials(data).then((result) => {
             sendResponse({
@@ -732,7 +730,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ success: false, error: "No data" })
     }
 
-    return true // important for async response
+    return true
   }
 
   sendResponse({ success: false, error: "Unknown message type" })

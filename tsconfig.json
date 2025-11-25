@@ -8,7 +8,7 @@
     },
     "baseUrl": ".",
     "jsx": "react-jsx",
-    "ignoreDeprecations": "6.0" // Suppress deprecation warnings for TypeScript 5.x compatibility
+    "ignoreDeprecations": "5.0" 
 
   }
 }
