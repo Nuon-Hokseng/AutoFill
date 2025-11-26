@@ -1,3 +1,5 @@
+import { BACKUP_DUMMY_POOL, generateRandomPassword } from "./dummyPool"
+
 // Service for generating dummy data via backend API
 
 // Backend endpoint base
@@ -230,103 +232,13 @@ export async function generateDummyData(
   return null
 }
 
-// Helper to generate random password
-const generateRandomPassword = (): string => {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*"
-  const length = 12 + Math.floor(Math.random() * 5) // 12-16 chars
-  let pwd = ""
-  for (let i = 0; i < length; i++) {
-    pwd += chars[Math.floor(Math.random() * chars.length)]
-  }
-  return pwd
-}
-
-// Backup dummy data pool for instant use while AI generates
-const BACKUP_DUMMY_POOL: AutofillData[] = [
-  {
-    firstname: "Alex",
-    middlename: "Jordan",
-    lastname: "Chen",
-    fullname: "Alex Jordan Chen",
-    username: "alexchen2024",
-    email: "alex.chen3234@yahoo.com",
-    password: generateRandomPassword(),
-    gender: "2",
-    dob: "15-03-1992",
-    age: "32",
-    birthplace: "Singapore",
-    company: "Tech Solutions Pte Ltd",
-    position: "Software Developer",
-    address1: "45 Marina Boulevard",
-    address2: "Unit 12-03",
-    city: "Singapore",
-    state: "Central Region",
-    zipcode: "018956",
-    postalcode: "018956",
-    country: "Singapore",
-    homephone: "+65 6234-5678",
-    cellphone: "+65 9123-4567",
-    website: "https://alexchen.dev"
-  },
-  {
-    firstname: "Maria",
-    middlename: "Sofia",
-    lastname: "Garcia",
-    fullname: "Maria Sofia Garcia",
-    username: "mariagarcia89",
-    email: "maria.garcia324@gmail.com",
-    password: generateRandomPassword(),
-    gender: "1",
-    dob: "22-08-1989",
-    age: "35",
-    birthplace: "Madrid, Spain",
-    company: "Innovación Digital SA",
-    position: "Project Manager",
-    address1: "Calle Gran Via 28",
-    address2: "Piso 5A",
-    city: "Madrid",
-    state: "Madrid",
-    zipcode: "28013",
-    postalcode: "28013",
-    country: "Spain",
-    homephone: "+34 91 123 4567",
-    cellphone: "+34 612 345 678",
-    website: "https://mariagarcia.es"
-  },
-  {
-    firstname: "Yuki",
-    middlename: "Haruto",
-    lastname: "Tanaka",
-    fullname: "Yuki Haruto Tanaka",
-    username: "yukitanaka",
-    email: "yuki.tanaka4243@yahoo.jp",
-    password: generateRandomPassword(),
-    gender: "2",
-    dob: "10-11-1985",
-    age: "39",
-    birthplace: "Tokyo, Japan",
-    company: "Tokyo Medical Center",
-    position: "Senior Physician",
-    address1: "1-2-3 Shibuya",
-    address2: "Apt 801",
-    city: "Tokyo",
-    state: "Tokyo",
-    zipcode: "150-0002",
-    postalcode: "150-0002",
-    country: "Japan",
-    homephone: "+81 3-1234-5678",
-    cellphone: "+81 90-1234-5678",
-    website: "https://yukitanaka.jp"
-  }
-]
-
 // Track if we're using backup data
 let usingBackupData = false
 
 // Simple cache system with single entry and 1 hour auto-refresh
 let cachedData: DummyUserData | null = null
 let cacheTimestamp: number = 0
-const CACHE_REFRESH_DURATION = 60 * 60 * 1000
+const CACHE_REFRESH_DURATION = 30 * 60 * 1000
 let refreshTimer: NodeJS.Timeout | null = null
 let isGenerating = false
 
