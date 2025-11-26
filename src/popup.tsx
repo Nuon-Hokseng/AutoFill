@@ -82,9 +82,6 @@ export default function IndexPopup() {
   const handleSaveProfile = () => {
     if (!saveProfileRequest) return
 
-    console.log("💾 Saving profile request:", saveProfileRequest)
-    console.log("📝 Filled fields to save:", saveProfileRequest.filledFields)
-
     chrome.storage.local.get("websiteProfiles", (result) => {
       const profiles = result.websiteProfiles || []
       const newProfile = {
@@ -97,8 +94,6 @@ export default function IndexPopup() {
       }
       profiles.push(newProfile)
       chrome.storage.local.set({ websiteProfiles: profiles }, () => {
-        console.log("✅ Profile saved successfully", newProfile)
-        console.log("🔍 Saved profile data:", newProfile.data)
         setSaveProfileRequest(null)
       })
     })

@@ -67,10 +67,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "TRIGGER_AUTOFILL") {
     // Check if profile data is provided
     if (message.useProfileData) {
-      console.log("📤 Using profile data for autofill")
-      console.log("🔍 Profile data received:", message.useProfileData)
-      console.log("📋 Profile data keys:", Object.keys(message.useProfileData))
-
       // Send profile data directly to content script
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
@@ -129,8 +125,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 source: source
               },
               (response) => {
-                console.log("Content script response:", response)
-
                 sendResponse({
                   ...(response || { success: false }),
                   source: source
@@ -147,6 +141,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false, error: error.message })
       })
 
-    return true 
+    return true
   }
 })

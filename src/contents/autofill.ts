@@ -51,9 +51,58 @@ function collectInputsDeep(
 ): (HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)[] {
   const nodes: (HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)[] =
     []
-  root.querySelectorAll("input, textarea, select").forEach((el) => {
-    nodes.push(el as any)
+
+  const isCaptchaField = (el: Element): boolean => {
+    const attrs = [
+      el.getAttribute("name") || "",
+      el.getAttribute("id") || "",
+      el.getAttribute("placeholder") || "",
+      el.getAttribute("aria-label") || "",
+      el.getAttribute("aria-labelledby") || ""
+    ]
+      .join(" ")
+      .toLowerCase()
+
+    // Common captcha indicators
+    const patterns = [
+      "captcha",
+      "recaptcha",
+      "re-captcha",
+      "g-recaptcha",
+      "g-recaptcha-response",
+      "hcaptcha",
+      "h-captcha",
+      "cf-turnstile",
+      "turnstile"
+    ]
+
+    if (patterns.some((p) => attrs.includes(p))) return true
+
+    // Class-based detection
+    const classList = Array.from(el.classList || []).map((c) => c.toLowerCase())
+    if (
+      classList.some((c) =>
+        ["g-recaptcha", "g-recaptcha-response", "h-captcha", "captcha"].some(
+          (p) => c.includes(p)
+        )
+      )
+    )
+      return true
+
+    return false
+  }
+
+  const allElements = root.querySelectorAll("input, textarea, select")
+  let captchaCount = 0
+
+  allElements.forEach((el) => {
+    if (isCaptchaField(el)) {
+      captchaCount++
+    } else {
+      nodes.push(el as any)
+    }
   })
+
   // Traverse elements with shadow roots
   root.querySelectorAll("*").forEach((el) => {
     const anyEl = el as any
@@ -395,7 +444,8 @@ async function fillCredentials(credentials: {
     if (
       passwordEl &&
       credentials.password &&
-      !recaptchaFields.includes(passwordEl as any)
+      !recaptchaFields.includes(passwordEl as any) &&
+      !passwordEl.closest(".g-recaptcha, .h-captcha, .cf-turnstile")
     ) {
       const success = await fillPassword(passwordEl, credentials.password)
       if (success) {
@@ -556,16 +606,9 @@ async function fillCredentials(credentials: {
 
     // Show save profile modal if fields were filled
     const actualFilledCount = Object.keys(filledFieldsTracker).length
-    console.log("📊 Autofill complete:", {
-      fieldsCount,
-      actualFilledCount,
-      fields: Object.keys(filledFieldsTracker)
-    })
 
     if (actualFilledCount > 0) {
-      console.log("✅ Condition met, will notify popup in 500ms...")
       setTimeout(() => {
-        console.log("⏰ Timeout complete, notifying popup...")
         notifyPopupSaveProfile(
           filledFieldsTracker,
           actualFilledCount,
@@ -576,9 +619,20 @@ async function fillCredentials(credentials: {
       console.log("❌ No fields tracked for profile saving")
     }
 
-    return { filled: fieldsCount, total: totalDetected }
+    // If fields were filled but totalDetected is 0, use fieldsCount as total
+    // This handles cases where detection array may be incomplete but filling succeeded
+    const finalTotal = totalDetected > 0 ? totalDetected : fieldsCount
+    const result = { filled: fieldsCount, total: finalTotal }
+
+    // Safety check: if both are 0 but we have tracked fields, use tracker count
+    if (result.filled === 0 && result.total === 0 && actualFilledCount > 0) {
+      return { filled: actualFilledCount, total: actualFilledCount }
+    }
+
+    return result
   } catch (error) {
     console.error("Error during autofill:", error)
+    return { filled: 0, total: 0 }
   }
 }
 
@@ -598,7 +652,6 @@ async function waitForElements(maxWait = 5000): Promise<boolean> {
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === "AUTOFILL_CREDENTIALS") {
-    // Use data passed from background script (either custom or generated)
     const data = msg.data
     const source = msg.source || "unknown"
 

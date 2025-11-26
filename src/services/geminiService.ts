@@ -116,10 +116,7 @@ const normalizeAutofill = (input: any): AutofillData | null => {
 
   if (!hasMinimumData) {
     console.error("❌ Validation failed. No core fields present")
-    console.log(
-      "🔍 Normalized data sample:",
-      JSON.stringify(data).slice(0, 300)
-    )
+
     return null
   }
 
@@ -176,12 +173,6 @@ export async function fetchAutofillData(): Promise<AutofillData | null> {
     const json = (await res.json()) as any
     const raw =
       json && typeof json === "object" && "output" in json ? json.output : json
-
-    console.log("📥 Backend response received:", {
-      hasOutput: !!json?.output,
-      sampleKeys:
-        raw && typeof raw === "object" ? Object.keys(raw).slice(0, 10) : []
-    })
 
     const normalized = normalizeAutofill(raw)
     if (!normalized) {
@@ -381,9 +372,6 @@ export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
         usingBackupData = stored.usingBackup || false
         scheduleCacheRefresh()
         const dataType = usingBackupData ? "backup" : "AI-generated"
-        console.log(
-          `✅ Restored ${dataType} data from storage (age: ${Math.floor(storedAge / 1000)}s)`
-        )
       }
     }
   }

@@ -103,9 +103,6 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
   }
 
   const handleUseProfile = (profile: ProfileEntry) => {
-    console.log("🔄 Using profile:", profile)
-    console.log("📦 Profile data:", profile.data)
-
     // Send message to background to trigger autofill with this profile's data
     chrome.runtime.sendMessage(
       {
@@ -113,7 +110,6 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
         useProfileData: profile.data
       },
       (response) => {
-        console.log("📨 Response from background:", response)
         if (response?.success) {
           setStatus(
             <span className="flex items-center gap-2">

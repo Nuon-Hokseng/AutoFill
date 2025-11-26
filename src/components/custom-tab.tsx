@@ -105,15 +105,11 @@ export default function CustomTab({
               // Format is DD-MM-YYYY from storage, convert to YYYY-MM-DD for input
               const [day, month, year] = parts
               displayData.dob = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-              console.log(
-                `📅 Converting DOB for display: ${res.autofillData.dob} → ${displayData.dob}`
-              )
             }
             // If already YYYY-MM-DD, keep as is
           }
 
           setForm(displayData)
-          console.log("📝 Updated display form from storage:", displayData)
         } else {
           setForm(initialFormState)
         }
@@ -121,7 +117,6 @@ export default function CustomTab({
         // Load enabled fields
         if (res.enabledFields && Array.isArray(res.enabledFields)) {
           setEnabledFields(new Set(res.enabledFields))
-          console.log("📋 Loaded enabled fields:", res.enabledFields)
         }
 
         // Load custom layout preference for web
@@ -132,7 +127,6 @@ export default function CustomTab({
             res.customLayout === "card")
         ) {
           setLayoutMode(res.customLayout)
-          console.log("🎛️ Loaded custom layout:", res.customLayout)
         }
       }
     )
@@ -194,7 +188,6 @@ export default function CustomTab({
         // Format is YYYY-MM-DD from date input
         const [year, month, day] = parts
         payload.dob = `${day}-${month}-${year}`
-        console.log(`📅 Converting DOB for save: ${dob} → ${payload.dob}`)
       } else {
         // Already in DD-MM-YYYY format
         payload.dob = dob
@@ -217,8 +210,6 @@ export default function CustomTab({
         customLayout: layoutMode
       },
       () => {
-        console.log("✅ Custom data saved successfully:", payload)
-        console.log("✅ Enabled fields saved:", enabledToSave)
         setStatus(
           <span className=" flex justify-center items-center gap-2 ">
             <CheckCheck className=" w-5 h-5 animate-pulse text-green-600" />
