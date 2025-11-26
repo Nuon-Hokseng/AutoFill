@@ -323,12 +323,25 @@ export default function CustomTab({
   const innerP = mode === "web" ? "p-6 space-y-5" : "p-4 space-y-4"
 
   return (
-    <div className={containerClass}>
-      <div className={innerP}>
+    <div className="w-80 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
+      <div className="p-4 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <button onClick={goBack} className="p-1 rounded text-indigo-600">
-              <ArrowLeft size={18} />
+            <button
+              onClick={goBack}
+              className="p-1 rounded text-gray-600">
+              <ArrowLeft size={16} />
+            </button>
+            <h1 className="plasmo-text-sm plasmo-font-semibold plasmo-text-gray-800">
+              Custom Credentials
+            </h1>
+          </div>
+          <div className="plasmo-flex plasmo-items-center plasmo-gap-1">
+            <button
+              onClick={() => setShowFieldSelector((s) => !s)}
+              className="plasmo-p-1 plasmo-rounded plasmo-text-gray-600 hover:plasmo-bg-gray-100"
+              aria-label="Select fields">
+              <Settings2 size={16} />
             </button>
             <div>
               <h1 className="text-sm font-semibold text-indigo-800">

@@ -168,7 +168,9 @@ export default function IndexPopup() {
               <IconBox>
                 <Wand2 size={18} className="text-white" />
               </IconBox>
-              <h2 className="text-lg font-semibold text-gray-800">FormGenie</h2>
+              <h2 className="text-lg font-semibold text-gray-800">
+                Auto Fill Extension
+              </h2>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
               Click the button to auto-fill your credentials into focused fields
@@ -295,7 +297,9 @@ export default function IndexPopup() {
               className="p-1 rounded text-gray-600">
               <ArrowLeft size={16} />
             </button>
-            <h2 className="text-lg font-semibold text-gray-800">Settings</h2>
+            <h2 className="text-lg font-semibold text-gray-800">
+              Settings
+            </h2>
           </div>
 
           <div className="space-y-4">
