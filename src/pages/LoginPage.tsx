@@ -1,17 +1,17 @@
-
-
 // src/pages/LoginPage.tsx
 import { useState } from "react"
-import React = require("react")
 import { useNavigate } from "react-router-dom"
-import { supabase } from "~lib/supabaseClient" // 1. Import your client
+
+import { login } from "~lib/authService"
+
+import React = require("react")
 
 export default function Login() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   // This hook lets you change pages
   const navigate = useNavigate()
 
@@ -21,19 +21,25 @@ export default function Login() {
     setLoading(true)
     setError(null)
 
-    // 2. This is the Supabase function to log a user in
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    })
+    try {
+      // Login and get session with token
+      const data = await login(email, password)
 
-    setLoading(false)
+      // Store the access token in Chrome storage
+      if (data.session?.access_token) {
+        await chrome.storage.local.set({
+          auth_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+          user_id: data.user?.id
+        })
+      }
 
-    if (error) {
-      setError(error.message) // Show the error from Supabase
-    } else {
-      // 3. Success! Send the user to the dashboard
-      navigate("/dashboard")
+      setLoading(false)
+      // Success! Send the user to the dashboard with a clean reload
+      window.location.href = chrome.runtime.getURL("options.html#/dashboard")
+    } catch (error: any) {
+      setLoading(false)
+      setError(error.message || "Login failed")
     }
   }
 
@@ -41,11 +47,11 @@ export default function Login() {
     <div className="flex justify-center items-center">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
         <h2 className="text-2xl font-bold text-center">Login</h2>
-        
+
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label 
-              htmlFor="email" 
+            <label
+              htmlFor="email"
               className="block text-sm font-medium text-gray-700">
               Email
             </label>
@@ -60,8 +66,8 @@ export default function Login() {
           </div>
 
           <div>
-            <label 
-              htmlFor="password" 
+            <label
+              htmlFor="password"
               className="block text-sm font-medium text-gray-700">
               Password
             </label>
@@ -76,11 +82,7 @@ export default function Login() {
           </div>
 
           {/* Show error message if login fails */}
-          {error && (
-            <div className="text-sm text-red-600">
-              {error}
-            </div>
-          )}
+          {error && <div className="text-sm text-red-600">{error}</div>}
 
           <div>
             <button

@@ -1,11 +1,8 @@
+import { useEffect, useState } from "react" // <-- 1. Added useEffect
 
-
-import React = require("react")
-import  { useState, useEffect } from "react" // <-- 1. Added useEffect
 import "~style.css"
+
 import { Button } from "~features/components/ui/button"
-import { Input } from "~features/components/ui/input"
-import { Label } from "~features/components/ui/label"
 import {
   Card,
   CardContent,
@@ -13,52 +10,54 @@ import {
   CardHeader,
   CardTitle
 } from "~features/components/ui/card"
-import { supabase } from "~lib/supabaseClient" // <-- 2. Imported Supabase
+import { Input } from "~features/components/ui/input"
+import { Label } from "~features/components/ui/label"
+import { supabase } from "~lib/supabaseClient"
+
+import React = require("react")
 
 export default function AccountPage() {
-  // 3. Set default states to empty and add a loading state
   const [loading, setLoading] = useState(true)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
-  const [email, setEmail] = useState("") // Was "example@gmail.com"
+  const [email, setEmail] = useState("")
 
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
 
-  // 4. Added this block to fetch the user's email on page load
   useEffect(() => {
-  async function fetchUserData() {
-    setLoading(true)
+    async function fetchUserData() {
+      setLoading(true)
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
+      try {
+        const {
+          data: { user }
+        } = await supabase.auth.getUser()
 
-      if (user) {
-        setEmail(user.email)
-
-        // Fetch firstName and lastName from user_metadata
-        setFirstName(user.user_metadata?.firstName || "")
-        setLastName(user.user_metadata?.lastName || "")
-      } else {
-        console.log("No user is logged in.")
+        if (user) {
+          setEmail(user.email)
+          setFirstName(user.user_metadata?.first_name || "")
+          setLastName(user.user_metadata?.last_name || "")
+        } else {
+          console.log("No user is logged in.")
+          setEmail("")
+          setFirstName("")
+          setLastName("")
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error)
         setEmail("")
         setFirstName("")
         setLastName("")
       }
-    } catch (error) {
-      console.error("Error fetching user data:", error)
-      setEmail("")
-      setFirstName("")
-      setLastName("")
+
+      setLoading(false)
     }
 
-    setLoading(false)
-  }
-
-  fetchUserData()
-}, [])
- // The empty array [] means this runs only once
+    fetchUserData()
+  }, [])
+  // The empty array [] means this runs only once
 
   const handleProfileUpdate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,40 +102,39 @@ export default function AccountPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-  <div className="space-y-4">
-    <div className="space-y-2">
-      <Label htmlFor="firstName">First Name</Label>
-      <Input
-        id="firstName"
-        value={firstName || "No first name set"}
-        readOnly
-        className="bg-gray-100"
-      />
-    </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  value={firstName || "No first name set"}
+                  readOnly
+                  className="bg-gray-100"
+                />
+              </div>
 
-    <div className="space-y-2">
-      <Label htmlFor="lastName">Last Name</Label>
-      <Input
-        id="lastName"
-        value={lastName || "No last name set"}
-        readOnly
-        className="bg-gray-100"
-      />
-    </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={lastName || "No last name set"}
+                  readOnly
+                  className="bg-gray-100"
+                />
+              </div>
 
-    <div className="space-y-2">
-      <Label htmlFor="email">Email</Label>
-      <Input
-        id="email"
-        type="email"
-        value={email || "Not logged in"}
-        readOnly
-        className="bg-gray-100"
-      />
-    </div>
-  </div>
-</CardContent>
-
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email || "Not logged in"}
+                  readOnly
+                  className="bg-gray-100"
+                />
+              </div>
+            </div>
+          </CardContent>
         </Card>
 
         {/* Change Password Section */}

@@ -10,9 +10,11 @@ import {
 
 import { Header } from "~features/components/ui/header"
 import Account from "~pages/AccountPage"
+import ConfirmEmail from "~pages/ConfirmEmail"
 import Dashboard from "~pages/dashboard"
 import CustomFields from "~pages/dashboard/custom-fields"
 import Login from "~pages/LoginPage"
+import SignupPage from "~pages/SignupPage"
 
 import React = require("react")
 
@@ -87,6 +89,8 @@ export default function Options() {
             <Route path="/dashboard/custom-fields" element={<CustomFields />} />
             <Route path="/account" element={<Account />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/auth/confirm" element={<ConfirmEmail />} />
             {/* Catch-all route for unmatched paths */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
