@@ -1,3 +1,4 @@
+import { Pencil } from "lucide-react"
 import { useEffect, useState } from "react" // <-- 1. Added useEffect
 
 import "~style.css"
@@ -25,6 +26,19 @@ export default function AccountPage() {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [profileUpdating, setProfileUpdating] = useState(false)
+  const [profileMessage, setProfileMessage] = useState<{
+    type: "success" | "error"
+    text: string
+  } | null>(null)
+
+  const [passwordUpdating, setPasswordUpdating] = useState(false)
+  const [passwordMessage, setPasswordMessage] = useState<{
+    type: "success" | "error"
+    text: string
+  } | null>(null)
 
   useEffect(() => {
     async function fetchUserData() {
@@ -59,19 +73,108 @@ export default function AccountPage() {
   }, [])
   // The empty array [] means this runs only once
 
-  const handleProfileUpdate = (e: React.FormEvent) => {
+  const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
-    // This is where you would add Supabase logic to UPDATE the name
-    console.log("Profile updated:", { firstName, lastName, email })
+    setProfileUpdating(true)
+    setProfileMessage(null)
+
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          full_name: `${firstName} ${lastName}`
+        }
+      })
+
+      if (error) throw error
+
+      setProfileMessage({
+        type: "success",
+        text: "Profile updated successfully!"
+      })
+      setIsEditingProfile(false)
+    } catch (error: any) {
+      console.error("Error updating profile:", error)
+      setProfileMessage({
+        type: "error",
+        text: error.message || "Failed to update profile"
+      })
+    } finally {
+      setProfileUpdating(false)
+    }
   }
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
+    setPasswordUpdating(true)
+    setPasswordMessage(null)
+
+    // Validate passwords match
     if (newPassword !== confirmPassword) {
-      alert("Passwords don't match")
+      setPasswordMessage({
+        type: "error",
+        text: "New passwords don't match"
+      })
+      setPasswordUpdating(false)
       return
     }
-    console.log("Password changed")
+
+    // Validate password length
+    if (newPassword.length < 6) {
+      setPasswordMessage({
+        type: "error",
+        text: "Password must be at least 6 characters"
+      })
+      setPasswordUpdating(false)
+      return
+    }
+
+    try {
+      // Verify current password by attempting to sign in
+      const {
+        data: { user }
+      } = await supabase.auth.getUser()
+
+      if (!user?.email) {
+        throw new Error("No user found")
+      }
+
+      // Try to sign in with current password to verify
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword
+      })
+
+      if (signInError) {
+        throw new Error("Current password is incorrect")
+      }
+
+      // Update password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+
+      if (updateError) throw updateError
+
+      setPasswordMessage({
+        type: "success",
+        text: "Password updated successfully!"
+      })
+
+      // Clear password fields
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch (error: any) {
+      console.error("Error changing password:", error)
+      setPasswordMessage({
+        type: "error",
+        text: error.message || "Failed to change password"
+      })
+    } finally {
+      setPasswordUpdating(false)
+    }
   }
 
   // 5. Added a loading state to prevent showing old data
@@ -114,20 +217,36 @@ export default function AccountPage() {
         {/* Profile Info Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Profile Information</CardTitle>
-            <CardDescription>
-              Your personal details and email address
-            </CardDescription>
+            <div className="flex items-start justify-between">
+              <div>
+                <CardTitle>Profile Information</CardTitle>
+                <CardDescription>
+                  Your personal details and email address
+                </CardDescription>
+              </div>
+              {!isEditingProfile && (
+                <Button
+                  onClick={() => setIsEditingProfile(true)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-600 hover:text-[#00BABB]">
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <form onSubmit={handleProfileUpdate} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
                 <Input
                   id="firstName"
-                  value={firstName || "No first name set"}
-                  readOnly
-                  className="bg-gray-100"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Enter first name"
+                  readOnly={!isEditingProfile}
+                  className={!isEditingProfile ? "bg-gray-100" : ""}
+                  required
                 />
               </div>
 
@@ -135,9 +254,12 @@ export default function AccountPage() {
                 <Label htmlFor="lastName">Last Name</Label>
                 <Input
                   id="lastName"
-                  value={lastName || "No last name set"}
-                  readOnly
-                  className="bg-gray-100"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Enter last name"
+                  readOnly={!isEditingProfile}
+                  className={!isEditingProfile ? "bg-gray-100" : ""}
+                  required
                 />
               </div>
 
@@ -151,7 +273,39 @@ export default function AccountPage() {
                   className="bg-gray-100"
                 />
               </div>
-            </div>
+
+              {profileMessage && (
+                <div
+                  className={`text-sm ${
+                    profileMessage.type === "success"
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}>
+                  {profileMessage.text}
+                </div>
+              )}
+
+              {isEditingProfile && (
+                <div className="flex gap-2">
+                  <Button
+                    type="submit"
+                    disabled={profileUpdating}
+                    className="bg-[#00BABB] hover:bg-[#009999]">
+                    {profileUpdating ? "Updating..." : "Update Profile"}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingProfile(false)
+                      setProfileMessage(null)
+                    }}
+                    variant="ghost"
+                    className="border border-gray-300">
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </form>
           </CardContent>
         </Card>
 
@@ -173,6 +327,7 @@ export default function AccountPage() {
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Enter current password"
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -182,7 +337,8 @@ export default function AccountPage() {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
+                  placeholder="Enter new password (min 6 characters)"
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -193,10 +349,26 @@ export default function AccountPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
+                  required
                 />
               </div>
-              <Button type="submit" className="bg-primary hover:bg-primary/90">
-                Update Password
+
+              {passwordMessage && (
+                <div
+                  className={`text-sm ${
+                    passwordMessage.type === "success"
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}>
+                  {passwordMessage.text}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={passwordUpdating}
+                className="bg-[#00BABB] hover:bg-[#009999]">
+                {passwordUpdating ? "Updating..." : "Update Password"}
               </Button>
             </form>
           </CardContent>

@@ -1,7 +1,7 @@
 {
   "name": "auto-fill-extension",
   "displayName": "Auto fill extension",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "auto fill web extension tool which helps users to fill any forms with low effort.",
   "author": "muny, seng and lisa",
   "scripts": {
