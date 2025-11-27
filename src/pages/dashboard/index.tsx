@@ -25,6 +25,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [profiles, setProfiles] = useState<ProfileEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [dataVersion, setDataVersion] = useState(0)
 
   useEffect(() => {
     // Load website profiles from storage
@@ -37,6 +38,27 @@ export default function Dashboard() {
       )
       setLoading(false)
     })
+
+    // Listen for storage changes to auto-refresh when data syncs
+    const handleStorageChange = (changes: any, areaName: string) => {
+      if (
+        areaName === "local" &&
+        (changes.websiteProfiles || changes.autofillData)
+      ) {
+        console.log("📦 Storage updated, refreshing data...")
+        setDataVersion((prev) => prev + 1)
+        if (changes.websiteProfiles) {
+          setProfiles(
+            (changes.websiteProfiles.newValue || []).sort(
+              (a: ProfileEntry, b: ProfileEntry) => b.timestamp - a.timestamp
+            )
+          )
+        }
+      }
+    }
+
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange)
   }, [])
 
   const handleDelete = (profileId: string) => {
@@ -88,6 +110,20 @@ export default function Dashboard() {
               Manage your autofill data and profiles
             </p>
           </div>
+          <Button
+            onClick={async () => {
+              try {
+                const { logout } = await import("~lib/authService")
+                await logout()
+                navigate("/login")
+              } catch (error) {
+                console.error("Logout error:", error)
+              }
+            }}
+            variant="ghost"
+            className="border border-red-300 text-red-600 hover:bg-red-50">
+            Logout
+          </Button>
         </div>
 
         {/* Quick Actions */}
@@ -124,7 +160,7 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex justify-center">
-            <CustomTab goBack={() => {}} mode="web" />
+            <CustomTab key={dataVersion} goBack={() => {}} mode="web" />
           </div>
         </section>
 
@@ -143,7 +179,7 @@ export default function Dashboard() {
               <Button
                 onClick={handleClearAll}
                 variant="ghost"
-                className="border border-red-300 text-red-600 hover:bg-red-50 text-sm">
+                className="border border-red-300 text-red-600 hover:bg-red-50 text-sm flex items-center">
                 <Trash2 className="w-4 h-4 mr-2" />
                 Clear All
               </Button>

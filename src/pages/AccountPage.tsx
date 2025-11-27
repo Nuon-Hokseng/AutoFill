@@ -88,11 +88,29 @@ export default function AccountPage() {
   // 6. Your original JSX. The 'value' props will now use the fetched data.
   return (
     <div className="min-h-screen bg-white">
-      <header className="p-4 mx-32">
-        <h1 className="text-3xl font-bold">Account Settings</h1>
+      <header className="p-4 px-4 sm:px-8 md:px-16 lg:px-32">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Account Settings</h1>
+          <Button
+            onClick={async () => {
+              try {
+                const { logout } = await import("~lib/authService")
+                await logout()
+                window.location.href = chrome.runtime.getURL(
+                  "options.html#/login"
+                )
+              } catch (error) {
+                console.error("Logout error:", error)
+              }
+            }}
+            variant="ghost"
+            className="border border-red-300 text-red-600 hover:bg-red-50">
+            Logout
+          </Button>
+        </div>
       </header>
 
-      <main className="p-6 max-w-4xl mx-auto space-y-6">
+      <main className="p-4 px-4 sm:px-8 md:px-16 lg:px-32 max-w-7xl mx-auto space-y-6">
         {/* Profile Info Section */}
         <Card>
           <CardHeader>

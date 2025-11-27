@@ -3,6 +3,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { signup } from "~lib/authService"
+import { supabase } from "~lib/supabaseClient"
 
 import React = require("react")
 
@@ -45,6 +46,10 @@ export default function SignupPage() {
         first_name: firstName,
         last_name: lastName
       })
+
+      // Sign out the auto-created session from signup
+      await supabase.auth.signOut()
+
       setSuccess(true)
       setLoading(false)
 

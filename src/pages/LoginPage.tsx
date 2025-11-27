@@ -44,15 +44,19 @@ export default function Login() {
         console.error("❌ Missing session or user data")
       }
 
-      setLoading(false)
+      // Auto-sync from cloud after login (wait for completion)
+      console.log("🔄 Starting data sync from Supabase...")
+      try {
+        await Promise.all([
+          syncProfileFromSupabase(),
+          syncWebsiteProfilesFromSupabase()
+        ])
+        console.log("✅ Data sync completed successfully")
+      } catch (err) {
+        console.warn("⚠️ Sync failed but continuing:", err)
+      }
 
-      // Auto-sync from cloud after login (non-blocking)
-      syncProfileFromSupabase().catch((err) =>
-        console.warn("Failed to sync custom fields:", err)
-      )
-      syncWebsiteProfilesFromSupabase().catch((err) =>
-        console.warn("Failed to sync website profiles:", err)
-      )
+      setLoading(false)
 
       // Success! Send the user to the dashboard with a clean reload
       window.location.href = chrome.runtime.getURL("options.html#/dashboard")
