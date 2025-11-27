@@ -1,5 +1,6 @@
 // authService.ts
 import { supabase } from "./supabaseClient"
+import { clearLocalData } from "./syncService"
 
 export async function signup(
   email: string,
@@ -29,6 +30,9 @@ export async function login(email: string, password: string) {
 }
 
 export async function logout() {
+  // Clear all local data before signing out
+  await clearLocalData()
+
   const { error } = await supabase.auth.signOut()
   if (error) throw error
 }

@@ -2,8 +2,11 @@ import {
   ArrowLeft,
   Check,
   CheckCheck,
+  Cloud,
+  CloudOff,
   Eye,
   EyeOff,
+  RefreshCw,
   Settings2,
   Trash,
   Trash2,
@@ -11,7 +14,11 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
-// Use background messaging to clear AI cache to ensure background memory is reset
+import {
+  getLastSyncTime,
+  syncProfileFromSupabase,
+  syncProfileToSupabase
+} from "~lib/syncService"
 
 import React = require("react")
 
@@ -64,6 +71,8 @@ export default function CustomTab({
   const [form, setForm] = useState(initialFormState)
   const [status, setStatus] = useState<React.ReactNode>("")
   const [showFieldSelector, setShowFieldSelector] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [lastSyncTime, setLastSyncTime] = useState<number | null>(null)
 
   // Track visibility for each sensitive field individually
   const [fieldVisibility, setFieldVisibility] = useState<
@@ -92,6 +101,9 @@ export default function CustomTab({
 
   // Load initial data from storage
   useEffect(() => {
+    // Load last sync time
+    getLastSyncTime().then(setLastSyncTime)
+
     chrome.storage.local.get(
       ["autofillData", "enabledFields", "customLayout"],
       (res) => {
@@ -177,7 +189,7 @@ export default function CustomTab({
     setForm({ ...form, [id]: value })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const { dob, ...rest } = form
     const payload = { ...rest, dob }
 
@@ -209,16 +221,90 @@ export default function CustomTab({
         enabledFields: enabledToSave,
         customLayout: layoutMode
       },
-      () => {
+      async () => {
         setStatus(
           <span className=" flex justify-center items-center gap-2 ">
             <CheckCheck className=" w-5 h-5 animate-pulse text-green-600" />
-            <span className="text-gray-700">Saved</span>
+            <span className="text-gray-700">Saved locally</span>
           </span>
         )
-        setTimeout(() => setStatus(""), 2000)
+
+        // Sync to cloud
+        setSyncing(true)
+        const syncResult = await syncProfileToSupabase()
+        setSyncing(false)
+
+        if (syncResult.success) {
+          setLastSyncTime(syncResult.syncedAt || Date.now())
+          setStatus(
+            <span className=" flex justify-center items-center gap-2 ">
+              <Cloud className=" w-5 h-5 text-green-600" />
+              <span className="text-gray-700">Synced to cloud</span>
+            </span>
+          )
+        } else {
+          console.error("❌ Sync failed:", syncResult.error)
+          setStatus(
+            <span className=" flex justify-center items-center gap-2 ">
+              <CloudOff className=" w-5 h-5 text-orange-600" />
+              <span className="text-gray-700">
+                {syncResult.error || "Saved locally only"}
+              </span>
+            </span>
+          )
+        }
+
+        setTimeout(() => setStatus(""), 5000)
       }
     )
+  }
+
+  const handleSyncFromCloud = async () => {
+    setSyncing(true)
+    setStatus(
+      <span className="flex justify-center items-center gap-2">
+        <RefreshCw className="w-5 h-5 animate-spin text-blue-600" />
+        <span className="text-gray-700">Syncing from cloud...</span>
+      </span>
+    )
+
+    const result = await syncProfileFromSupabase()
+    setSyncing(false)
+
+    if (result.success) {
+      setLastSyncTime(result.syncedAt || Date.now())
+      // Reload data from storage
+      chrome.storage.local.get("autofillData", (res) => {
+        if (res.autofillData) {
+          const displayData = { ...res.autofillData }
+          if (displayData.dob && displayData.dob.includes("-")) {
+            const parts = displayData.dob.split("-")
+            if (parts.length === 3 && parts[0].length <= 2) {
+              const [day, month, year] = parts
+              displayData.dob = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+            }
+          }
+          setForm(displayData)
+        }
+      })
+
+      setStatus(
+        <span className="flex justify-center items-center gap-2">
+          <Cloud className="w-5 h-5 text-green-600" />
+          <span className="text-gray-700">Synced from cloud</span>
+        </span>
+      )
+    } else {
+      console.error("❌ Sync from cloud failed:", result.error)
+      setStatus(
+        <span className="flex justify-center items-center gap-2">
+          <CloudOff className="w-5 h-5 text-red-600" />
+          <span className="text-gray-700">{result.error || "Sync failed"}</span>
+        </span>
+      )
+    }
+
+    setTimeout(() => setStatus(""), 3000)
   }
 
   const handleRemove = () => {
@@ -528,19 +614,28 @@ export default function CustomTab({
           })}
         </div>
 
-        <div className="flex gap-2 mt-2">
-          <button
-            onClick={handleRemove}
-            className="p-2 bg-gray-100 rounded w-full flex items-center justify-center gap-2">
-            <Trash2 className="w-4 h-4" />
-            Remove
-          </button>
-          <button
-            onClick={handleSave}
-            className="p-2 bg-blue-500 text-white rounded w-full flex items-center justify-center gap-2">
-            <Check className="w-4 h-4" />
-            Save
-          </button>
+        <div className="space-y-2 mt-2">
+          <div className="flex gap-2">
+            <button
+              onClick={handleRemove}
+              className="p-2 bg-gray-100 rounded w-full flex items-center justify-center gap-2">
+              <Trash2 className="w-4 h-4" />
+              Remove
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={syncing}
+              className="p-2 bg-blue-500 text-white rounded w-full flex items-center justify-center gap-2 disabled:opacity-50">
+              <Check className="w-4 h-4" />
+              Save
+            </button>
+          </div>
+
+          {lastSyncTime && (
+            <p className="text-xs text-gray-500 text-center">
+              Last synced: {new Date(lastSyncTime).toLocaleString()}
+            </p>
+          )}
         </div>
 
         {status && <p className="text-center mt-2">{status}</p>}

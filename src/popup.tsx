@@ -13,6 +13,7 @@ import { useEffect, useState } from "react"
 import CustomTab from "~components/custom-tab"
 import { FillButton } from "~components/fill-button"
 import ProfileTab from "~components/profile-tab"
+import { syncWebsiteProfilesToSupabase } from "~lib/syncService"
 
 // Removed Gemini API key helpers (unused)
 
@@ -85,7 +86,7 @@ export default function IndexPopup() {
     chrome.storage.local.get("websiteProfiles", (result) => {
       const profiles = result.websiteProfiles || []
       const newProfile = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         website: saveProfileRequest.website,
         url: saveProfileRequest.url,
         timestamp: Date.now(),
@@ -93,8 +94,15 @@ export default function IndexPopup() {
         filledFields: Object.keys(saveProfileRequest.filledFields)
       }
       profiles.push(newProfile)
-      chrome.storage.local.set({ websiteProfiles: profiles }, () => {
+      chrome.storage.local.set({ websiteProfiles: profiles }, async () => {
         setSaveProfileRequest(null)
+        // Auto-sync to cloud after saving profile
+        const result = await syncWebsiteProfilesToSupabase()
+        if (result.success) {
+          console.log("✅ Website profile synced to cloud")
+        } else {
+          console.warn("⚠️ Failed to sync profile to cloud:", result.error)
+        }
       })
     })
   }

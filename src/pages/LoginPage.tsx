@@ -3,6 +3,10 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { login } from "~lib/authService"
+import {
+  syncProfileFromSupabase,
+  syncWebsiteProfilesFromSupabase
+} from "~lib/syncService"
 
 import React = require("react")
 
@@ -26,15 +30,30 @@ export default function Login() {
       const data = await login(email, password)
 
       // Store the access token in Chrome storage
-      if (data.session?.access_token) {
+      if (data.session?.access_token && data.user?.id) {
         await chrome.storage.local.set({
           auth_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
-          user_id: data.user?.id
+          user_id: data.user.id
         })
+        console.log("✅ Stored auth tokens:", {
+          userId: data.user.id,
+          hasToken: !!data.session.access_token
+        })
+      } else {
+        console.error("❌ Missing session or user data")
       }
 
       setLoading(false)
+
+      // Auto-sync from cloud after login (non-blocking)
+      syncProfileFromSupabase().catch((err) =>
+        console.warn("Failed to sync custom fields:", err)
+      )
+      syncWebsiteProfilesFromSupabase().catch((err) =>
+        console.warn("Failed to sync website profiles:", err)
+      )
+
       // Success! Send the user to the dashboard with a clean reload
       window.location.href = chrome.runtime.getURL("options.html#/dashboard")
     } catch (error: any) {

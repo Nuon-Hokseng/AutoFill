@@ -62,7 +62,7 @@ export function Header() {
           <span className="text-xl font-semibold">AutoFiller</span>
         </NavLink>
 
-        <nav className="ml-8 flex gap-6">
+        {/* <nav className="ml-8 flex gap-6">
           <NavLink
             to="/dashboard"
             className={({ isActive }) =>
@@ -81,44 +81,16 @@ export function Header() {
             }>
             Custom Fields
           </NavLink>
-        </nav>
+        </nav> */}
 
         <div className="ml-auto flex items-center gap-3">
-          {!loading && (
-            <>
-              {isAuthenticated ? (
-                <>
-                  <NavLink to="/account">
-                    <Button variant="ghost" size="sm">
-                      Account
-                    </Button>
-                  </NavLink>
-                  <Button
-                    size="sm"
-                    className="border border-[#00BABB] text-[#00BABB] hover:bg-[#00BABB] hover:text-white"
-                    onClick={handleLogout}>
-                    Logout
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <NavLink to="/signup">
-                    <Button
-                      size="sm"
-                      className="border border-[#00BABB] text-[#00BABB] hover:bg-[#00BABB] hover:text-white">
-                      Sign Up
-                    </Button>
-                  </NavLink>
-                  <NavLink to="/login">
-                    <Button
-                      size="sm"
-                      className="bg-[#00BABB] hover:bg-[#00A5A5]">
-                      Login
-                    </Button>
-                  </NavLink>
-                </>
-              )}
-            </>
+          {!loading && isAuthenticated && (
+            <Button
+              size="sm"
+              className="border border-[#00BABB] text-[#00BABB] hover:bg-[#00BABB] hover:text-white"
+              onClick={handleLogout}>
+              Logout
+            </Button>
           )}
         </div>
       </div>

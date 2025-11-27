@@ -1,5 +1,6 @@
-import { Calendar, FileText, Globe, Trash2 } from "lucide-react"
+import { Calendar, FileText, Globe, Settings, Trash2, User } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 import { Button } from "~features/components/ui/button"
 import {
@@ -20,6 +21,7 @@ interface ProfileEntry {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const [profiles, setProfiles] = useState<ProfileEntry[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -77,22 +79,79 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="p-4 mx-32 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Website Profiles</h1>
-          <p className="text-gray-600 mt-2">
-            Manage your saved autofill profiles for different websites
-          </p>
+      <header className="p-4 mx-32">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-gray-600 mt-2">
+              Manage your autofill data and profiles
+            </p>
+          </div>
         </div>
-        {profiles.length > 0 && (
-          <Button
-            onClick={handleClearAll}
-            variant="ghost"
-            className="border border-red-300 text-red-600 hover:bg-red-50">
-            <Trash2 className="w-4 h-4 mr-2" />
-            Clear All
-          </Button>
-        )}
+
+        {/* Quick Actions */}
+        <div className="grid gap-4 md:grid-cols-3 mb-8">
+          <Card
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => navigate("/dashboard/custom-fields")}>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <User className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Custom Fields</CardTitle>
+                  <CardDescription>Manage your personal data</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => navigate("/dashboard/website-profiles")}>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+                  <Globe className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Website Profiles</CardTitle>
+                  <CardDescription>View saved autofill history</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => navigate("/account")}>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Settings className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Account</CardTitle>
+                  <CardDescription>Settings and preferences</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Recent Website Profiles</h2>
+          {profiles.length > 0 && (
+            <Button
+              onClick={handleClearAll}
+              variant="ghost"
+              className="border border-red-300 text-red-600 hover:bg-red-50">
+              <Trash2 className="w-4 h-4 mr-2" />
+              Clear All
+            </Button>
+          )}
+        </div>
       </header>
 
       <main className="p-6 max-w-6xl mx-auto">

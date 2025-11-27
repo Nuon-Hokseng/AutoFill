@@ -1,15 +1,24 @@
 import {
   ArrowLeft,
   Check,
+  Cloud,
+  CloudOff,
   Edit2,
   Eye,
   EyeOff,
   Globe,
   Play,
+  RefreshCw,
   Trash2,
   X
 } from "lucide-react"
 import { useEffect, useState } from "react"
+
+import {
+  getLastSyncTime,
+  syncWebsiteProfilesFromSupabase,
+  syncWebsiteProfilesToSupabase
+} from "~lib/syncService"
 
 import React = require("react")
 
@@ -34,11 +43,16 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
     Record<string, boolean>
   >({})
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [lastSyncTime, setLastSyncTime] = useState<number | null>(null)
 
   const sensitiveFields = new Set(["password"])
 
   // Load profiles from storage
   useEffect(() => {
+    // Load last sync time
+    getLastSyncTime().then(setLastSyncTime)
+
     chrome.storage.local.get("websiteProfiles", (res) => {
       const savedProfiles = res.websiteProfiles || []
       setProfiles(
@@ -48,6 +62,69 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
       )
     })
   }, [])
+
+  const handleSyncToCloud = async () => {
+    setSyncing(true)
+    const result = await syncWebsiteProfilesToSupabase()
+    setSyncing(false)
+
+    if (result.success) {
+      setLastSyncTime(result.syncedAt || Date.now())
+      setStatus(
+        <span className="flex items-center gap-2">
+          <Cloud className="w-4 h-4 text-green-600" />
+          <span className="text-gray-700">Synced to cloud</span>
+        </span>
+      )
+    } else {
+      console.error("Sync to cloud failed:", result.error)
+      setStatus(
+        <span className="flex items-center gap-2">
+          <CloudOff className="w-4 h-4 text-red-600" />
+          <span className="text-gray-700 text-left">
+            Sync failed: {result.error || "Unknown error"}
+          </span>
+        </span>
+      )
+    }
+    setTimeout(() => setStatus(""), 5000)
+  }
+
+  const handleSyncFromCloud = async () => {
+    setSyncing(true)
+    const result = await syncWebsiteProfilesFromSupabase()
+    setSyncing(false)
+
+    if (result.success) {
+      setLastSyncTime(result.syncedAt || Date.now())
+      // Reload profiles from storage
+      chrome.storage.local.get("websiteProfiles", (res) => {
+        const savedProfiles = res.websiteProfiles || []
+        setProfiles(
+          savedProfiles.sort(
+            (a: ProfileEntry, b: ProfileEntry) => b.timestamp - a.timestamp
+          )
+        )
+      })
+      setStatus(
+        <span className="flex items-center gap-2">
+          <Cloud className="w-4 h-4 text-green-600" />
+          <span className="text-gray-700">Synced from cloud</span>
+        </span>
+      )
+    } else {
+      console.error("Sync from cloud failed:", result.error)
+      setStatus(
+        <span className="flex items-center gap-2">
+          <CloudOff className="w-4 h-4 text-red-600" />
+          <span className="text-gray-700 text-left">
+            Sync failed: {result.error || "Unknown error"}
+          </span>
+        </span>
+      )
+    }
+    setTimeout(() => setStatus(""), 5000)
+  }
 
   const handleDelete = (profileId: string) => {
     const updated = profiles.filter((p) => p.id !== profileId)
@@ -209,6 +286,12 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
               </button>
             )}
           </div>
+
+          {lastSyncTime && (
+            <p className="text-xs text-gray-500 text-center">
+              Last synced: {new Date(lastSyncTime).toLocaleString()}
+            </p>
+          )}
 
           {profiles.length === 0 ? (
             <div className="text-center py-8 text-gray-500">

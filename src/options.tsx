@@ -13,6 +13,7 @@ import Account from "~pages/AccountPage"
 import ConfirmEmail from "~pages/ConfirmEmail"
 import Dashboard from "~pages/dashboard"
 import CustomFields from "~pages/dashboard/custom-fields"
+import WebsiteProfiles from "~pages/dashboard/website-profiles"
 import Login from "~pages/LoginPage"
 import SignupPage from "~pages/SignupPage"
 
@@ -87,6 +88,10 @@ export default function Options() {
             <Route path="/" element={<Navigate to="/account" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/custom-fields" element={<CustomFields />} />
+            <Route
+              path="/dashboard/website-profiles"
+              element={<WebsiteProfiles />}
+            />
             <Route path="/account" element={<Account />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignupPage />} />
