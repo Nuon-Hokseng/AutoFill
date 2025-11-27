@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
+import { supabase } from "~lib/supabaseClient"
 import {
   getLastSyncTime,
   syncWebsiteProfilesFromSupabase,
@@ -126,13 +127,36 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
     setTimeout(() => setStatus(""), 5000)
   }
 
-  const handleDelete = (profileId: string) => {
+  const handleDelete = async (profileId: string) => {
     const updated = profiles.filter((p) => p.id !== profileId)
-    chrome.storage.local.set({ websiteProfiles: updated }, () => {
+    chrome.storage.local.set({ websiteProfiles: updated }, async () => {
       setProfiles(updated)
       if (selectedProfile?.id === profileId) {
         setSelectedProfile(null)
       }
+
+      // Also delete from Supabase if authenticated
+      try {
+        const {
+          data: { user }
+        } = await supabase.auth.getUser()
+        if (user) {
+          const { error } = await supabase
+            .from("website_profiles")
+            .delete()
+            .eq("id", profileId)
+            .eq("user_id", user.id)
+
+          if (error) {
+            console.error("Failed to delete from cloud:", error)
+          } else {
+            console.log("✅ Profile deleted from cloud")
+          }
+        }
+      } catch (error) {
+        console.error("Error deleting from cloud:", error)
+      }
+
       setStatus(
         <span className="flex items-center gap-2">
           <Trash2 className="w-4 h-4 text-green-600" />
@@ -164,11 +188,33 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
     })
   }
 
-  const handleClearAll = () => {
-    chrome.storage.local.set({ websiteProfiles: [] }, () => {
+  const handleClearAll = async () => {
+    chrome.storage.local.set({ websiteProfiles: [] }, async () => {
       setProfiles([])
       setSelectedProfile(null)
       setShowClearConfirm(false)
+
+      // Also delete all from Supabase if authenticated
+      try {
+        const {
+          data: { user }
+        } = await supabase.auth.getUser()
+        if (user) {
+          const { error } = await supabase
+            .from("website_profiles")
+            .delete()
+            .eq("user_id", user.id)
+
+          if (error) {
+            console.error("Failed to delete all from cloud:", error)
+          } else {
+            console.log("✅ All profiles deleted from cloud")
+          }
+        }
+      } catch (error) {
+        console.error("Error deleting all from cloud:", error)
+      }
+
       setStatus(
         <span className="flex items-center gap-2">
           <Check className="w-4 h-4 text-green-600" />

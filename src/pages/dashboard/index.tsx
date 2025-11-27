@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle
 } from "~features/components/ui/card"
+import { supabase } from "~lib/supabaseClient"
 
 interface ProfileEntry {
   id: string
@@ -61,17 +62,60 @@ export default function Dashboard() {
     return () => chrome.storage.onChanged.removeListener(handleStorageChange)
   }, [])
 
-  const handleDelete = (profileId: string) => {
+  const handleDelete = async (profileId: string) => {
     const updated = profiles.filter((p) => p.id !== profileId)
-    chrome.storage.local.set({ websiteProfiles: updated }, () => {
+    chrome.storage.local.set({ websiteProfiles: updated }, async () => {
       setProfiles(updated)
+
+      // Also delete from Supabase if authenticated
+      try {
+        const {
+          data: { user }
+        } = await supabase.auth.getUser()
+        if (user) {
+          const { error } = await supabase
+            .from("website_profiles")
+            .delete()
+            .eq("id", profileId)
+            .eq("user_id", user.id)
+
+          if (error) {
+            console.error("Failed to delete from cloud:", error)
+          } else {
+            console.log("✅ Profile deleted from cloud")
+          }
+        }
+      } catch (error) {
+        console.error("Error deleting from cloud:", error)
+      }
     })
   }
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (confirm("Are you sure you want to delete all website profiles?")) {
-      chrome.storage.local.set({ websiteProfiles: [] }, () => {
+      chrome.storage.local.set({ websiteProfiles: [] }, async () => {
         setProfiles([])
+
+        // Also delete all from Supabase if authenticated
+        try {
+          const {
+            data: { user }
+          } = await supabase.auth.getUser()
+          if (user) {
+            const { error } = await supabase
+              .from("website_profiles")
+              .delete()
+              .eq("user_id", user.id)
+
+            if (error) {
+              console.error("Failed to delete all from cloud:", error)
+            } else {
+              console.log("✅ All profiles deleted from cloud")
+            }
+          }
+        } catch (error) {
+          console.error("Error deleting all from cloud:", error)
+        }
       })
     }
   }
