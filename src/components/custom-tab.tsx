@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
+import { supabase } from "~lib/supabaseClient"
 import {
   getLastSyncTime,
   syncProfileFromSupabase,
@@ -229,29 +230,40 @@ export default function CustomTab({
           </span>
         )
 
-        // Sync to cloud
-        setSyncing(true)
-        const syncResult = await syncProfileToSupabase()
-        setSyncing(false)
+        // Sync to cloud only if authenticated
+        try {
+          const { data } = await supabase.auth.getSession()
+          if (data?.session) {
+            setSyncing(true)
+            const syncResult = await syncProfileToSupabase()
+            setSyncing(false)
 
-        if (syncResult.success) {
-          setLastSyncTime(syncResult.syncedAt || Date.now())
-          setStatus(
-            <span className=" flex justify-center items-center gap-2 ">
-              <Cloud className=" w-5 h-5 text-green-600" />
-              <span className="text-gray-700">Synced to cloud</span>
-            </span>
-          )
-        } else {
-          console.error("❌ Sync failed:", syncResult.error)
-          setStatus(
-            <span className=" flex justify-center items-center gap-2 ">
-              <CloudOff className=" w-5 h-5 text-orange-600" />
-              <span className="text-gray-700">
-                {syncResult.error || "Saved locally only"}
-              </span>
-            </span>
-          )
+            if (syncResult.success) {
+              setLastSyncTime(syncResult.syncedAt || Date.now())
+              setStatus(
+                <span className=" flex justify-center items-center gap-2 ">
+                  <Cloud className=" w-5 h-5 text-green-600" />
+                  <span className="text-gray-700">Synced to cloud</span>
+                </span>
+              )
+            } else {
+              console.error("❌ Sync failed:", syncResult.error)
+              setStatus(
+                <span className=" flex justify-center items-center gap-2 ">
+                  <CloudOff className=" w-5 h-5 text-orange-600" />
+                  <span className="text-gray-700">
+                    {syncResult.error || "Saved locally only"}
+                  </span>
+                </span>
+              )
+            }
+          } else {
+            // Not signed in; keep data local only
+            setSyncing(false)
+          }
+        } catch (e) {
+          // On any auth check error, do not attempt cloud sync
+          setSyncing(false)
         }
 
         setTimeout(() => setStatus(""), 5000)

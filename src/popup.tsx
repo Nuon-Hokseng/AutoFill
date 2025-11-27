@@ -13,6 +13,7 @@ import { useEffect, useState } from "react"
 import CustomTab from "~components/custom-tab"
 import { FillButton } from "~components/fill-button"
 import ProfileTab from "~components/profile-tab"
+import { supabase } from "~lib/supabaseClient"
 import { syncWebsiteProfilesToSupabase } from "~lib/syncService"
 
 // Removed Gemini API key helpers (unused)
@@ -96,12 +97,21 @@ export default function IndexPopup() {
       profiles.push(newProfile)
       chrome.storage.local.set({ websiteProfiles: profiles }, async () => {
         setSaveProfileRequest(null)
-        // Auto-sync to cloud after saving profile
-        const result = await syncWebsiteProfilesToSupabase()
-        if (result.success) {
-          console.log("✅ Website profile synced to cloud")
-        } else {
-          console.warn("⚠️ Failed to sync profile to cloud:", result.error)
+        // Auto-sync to cloud after saving profile ONLY if authenticated
+        try {
+          const { data } = await supabase.auth.getSession()
+          if (data?.session) {
+            const result = await syncWebsiteProfilesToSupabase()
+            if (result.success) {
+              console.log("✅ Website profile synced to cloud")
+            } else {
+              console.warn("⚠️ Failed to sync profile to cloud:", result.error)
+            }
+          } else {
+            console.log("ℹ️ Not signed in — saved locally only")
+          }
+        } catch (e) {
+          console.warn("⚠️ Could not check auth state; skipping cloud sync")
         }
       })
     })
