@@ -110,20 +110,29 @@ export default function Dashboard() {
               Manage your autofill data and profiles
             </p>
           </div>
-          <Button
-            onClick={async () => {
-              try {
-                const { logout } = await import("~lib/authService")
-                await logout()
-                navigate("/login")
-              } catch (error) {
-                console.error("Logout error:", error)
-              }
-            }}
-            variant="ghost"
-            className="border border-red-300 text-red-600 hover:bg-red-50">
-            Logout
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => navigate("/account")}
+              variant="ghost"
+              className="border border-purple-300 text-purple-600 hover:bg-purple-50 flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:inline">Account</span>
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  const { logout } = await import("~lib/authService")
+                  await logout()
+                  navigate("/login")
+                } catch (error) {
+                  console.error("Logout error:", error)
+                }
+              }}
+              variant="ghost"
+              className="border border-red-300 text-red-600 hover:bg-red-50">
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -238,7 +247,6 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               ))}
-              
             </div>
           )}
         </section>
