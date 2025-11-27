@@ -204,34 +204,36 @@ export default function IndexPopup() {
               />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-2 h-2 rounded-full ${isFilling ? "bg-yellow-400" : "bg-green-500"}`}
-                  />
-                  <span className="text-gray-600">
-                    {isFilling ? "Filling..." : "Ready"}
-                  </span>
+            {(filledCount ?? 0) > 0 || (totalCount ?? 0) > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${isFilling ? "bg-yellow-400" : "bg-green-500"}`}
+                    />
+                    <span className="text-gray-600">
+                      {isFilling ? "Filling..." : "Ready"}
+                    </span>
+                  </div>
+                  <div className="text-gray-500">
+                    {filledCount ?? 0}/{totalCount ?? 0} filled
+                  </div>
                 </div>
-                <div className="text-gray-500">
-                  {filledCount ?? 0}/{totalCount ?? 0} filled
-                </div>
-              </div>
 
-              <div className="flex gap-1 mt-1">
-                {Array.from({ length: Math.max(totalCount ?? 1, 1) }).map(
-                  (_, i) => {
-                    const filled = (filledCount ?? 0) > i
-                    return (
-                      <div
-                        key={i}
-                        className={`flex-1 h-2 rounded ${filled ? "bg-green-500" : "bg-gray-200"}`}></div>
-                    )
-                  }
-                )}
+                <div className="flex gap-1 mt-1">
+                  {Array.from({ length: Math.max(totalCount ?? 1, 1) }).map(
+                    (_, i) => {
+                      const filled = (filledCount ?? 0) > i
+                      return (
+                        <div
+                          key={i}
+                          className={`flex-1 h-2 rounded ${filled ? "bg-green-500" : "bg-gray-200"}`}></div>
+                      )
+                    }
+                  )}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
               <div className="flex items-center gap-2">

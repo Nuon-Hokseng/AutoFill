@@ -116,8 +116,7 @@ export const FillButton = ({
             className="text-red-500 flex items-center gap-2">
             <X className="w-5 h-5 animate-pulse" />
             <span className="text-sm text-red-600">
-              Failed to generate AI data. Try refresh data or toggle AI mode off
-              and on below.
+              No form detected, Please refesh
             </span>
           </span>
         )}
@@ -128,16 +127,6 @@ export const FillButton = ({
             <AlertCircle className="w-5 h-5 animate-pulse" />
             <span className="text-sm text-orange-600">
               No custom data. Add data or enable AI mode.
-            </span>
-          </span>
-        )}
-        {status === "noform" && (
-          <span
-            aria-label="noform"
-            className="text-yellow-600 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
-            <span className="text-sm text-yellow-700">
-              No form detected
             </span>
           </span>
         )}
