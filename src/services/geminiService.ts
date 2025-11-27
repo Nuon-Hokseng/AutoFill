@@ -452,14 +452,3 @@ export function clearCache(): void {
 
   console.log("🗑️ Cache cleared")
 }
-
-// Get cache status for debugging
-export function getCacheStatus(): {
-  hasData: boolean
-  age: number
-} {
-  return {
-    hasData: cachedData !== null,
-    age: Date.now() - cacheTimestamp
-  }
-}

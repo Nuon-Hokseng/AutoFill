@@ -183,6 +183,36 @@ function detectCredentialFields() {
   }
 }
 
+// Fallback: count visible inputs when heuristic detection fails
+function countVisibleInputs(): number {
+  try {
+    const all = document.querySelectorAll<HTMLInputElement>(
+      'input:not([type="hidden"]), textarea'
+    )
+    let count = 0
+    for (const el of all) {
+      if (
+        el.offsetParent !== null &&
+        el.type !== "submit" &&
+        el.type !== "button"
+      ) {
+        const type = el.type?.toLowerCase() || "text"
+        if (
+          ["text", "email", "password", "tel", "search", "url"].includes(
+            type
+          ) ||
+          el.tagName === "TEXTAREA"
+        ) {
+          count++
+        }
+      }
+    }
+    return count
+  } catch {
+    return 0
+  }
+}
+
 // Re-run detection when new inputs are added dynamically (throttled)
 let lastDetect = 0
 function ensureFreshDetection() {
@@ -619,9 +649,16 @@ async function fillCredentials(credentials: {
       console.log("❌ No fields tracked for profile saving")
     }
 
-    // If fields were filled but totalDetected is 0, use fieldsCount as total
-    // This handles cases where detection array may be incomplete but filling succeeded
-    const finalTotal = totalDetected > 0 ? totalDetected : fieldsCount
+    // Use fallback counting when heuristic detection fails
+    let finalTotal = totalDetected
+    if (finalTotal === 0) {
+      const fallback = countVisibleInputs()
+      finalTotal = fallback > 0 ? fallback : fieldsCount
+    }
+    // Ensure we never report 0 total when fields were actually filled
+    if (finalTotal === 0 && fieldsCount > 0) {
+      finalTotal = fieldsCount
+    }
     const result = { filled: fieldsCount, total: finalTotal }
 
     // Safety check: if both are 0 but we have tracked fields, use tracker count
