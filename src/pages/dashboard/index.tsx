@@ -125,29 +125,6 @@ export default function Dashboard() {
             Logout
           </Button>
         </div>
-
-        {/* Quick Actions */}
-        <div className="grid gap-4 mb-8">
-          <Card
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => navigate("/account")}>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
-                </div>
-                <div>
-                  <CardTitle className="text-base sm:text-lg">
-                    Account
-                  </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    Settings and preferences
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-        </div>
       </header>
 
       <main className="p-4 px-4 sm:px-8 md:px-16 lg:px-32 max-w-7xl mx-auto">
@@ -261,6 +238,7 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               ))}
+              
             </div>
           )}
         </section>
