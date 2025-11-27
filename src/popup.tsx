@@ -186,7 +186,9 @@ export default function IndexPopup() {
               <IconBox>
                 <Wand2 size={18} className="text-white" />
               </IconBox>
-              <h2 className="text-lg font-semibold text-gray-800">FormGenie</h2>
+              <h2 className="text-lg font-semibold text-gray-800">
+                Auto Fill Extension
+              </h2>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
               Click the button to auto-fill your credentials into focused fields
@@ -204,34 +206,31 @@ export default function IndexPopup() {
               />
             </div>
 
-            {(filledCount ?? 0) > 0 || (totalCount ?? 0) > 0 ? (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${isFilling ? "bg-yellow-400" : "bg-green-500"}`}
-                    />
-                    <span className="text-gray-600">
-                      {isFilling ? "Filling..." : "Ready"}
-                    </span>
-                  </div>
-                  <div className="text-gray-500">
-                    {filledCount ?? 0}/{totalCount ?? 0} filled
-                  </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-2 h-2 rounded-full ${isFilling ? "bg-yellow-400" : "bg-green-500"}`}
+                  />
+                  <span className="text-gray-600">
+                    {isFilling ? "Filling..." : "Ready"}
+                  </span>
+                </div>
+                <div className="text-gray-500">
+                  {filledCount ?? 0}/{totalCount ?? 0} filled
                 </div>
 
-                <div className="flex gap-1 mt-1">
-                  {Array.from({ length: Math.max(totalCount ?? 1, 1) }).map(
-                    (_, i) => {
-                      const filled = (filledCount ?? 0) > i
-                      return (
-                        <div
-                          key={i}
-                          className={`flex-1 h-2 rounded ${filled ? "bg-green-500" : "bg-gray-200"}`}></div>
-                      )
-                    }
-                  )}
-                </div>
+              <div className="flex gap-1 mt-1">
+                {Array.from({ length: Math.max(totalCount ?? 1, 1) }).map(
+                  (_, i) => {
+                    const filled = (filledCount ?? 0) > i
+                    return (
+                      <div
+                        key={i}
+                        className={`flex-1 h-2 rounded ${filled ? "bg-green-500" : "bg-gray-200"}`}></div>
+                    )
+                  }
+                )}
               </div>
             ) : null}
 
@@ -315,7 +314,9 @@ export default function IndexPopup() {
               className="p-1 rounded text-gray-600">
               <ArrowLeft size={16} />
             </button>
-            <h2 className="text-lg font-semibold text-gray-800">Settings</h2>
+            <h2 className="text-lg font-semibold text-gray-800">
+              Settings
+            </h2>
           </div>
 
           <div className="space-y-4">

@@ -130,6 +130,16 @@ export const FillButton = ({
             </span>
           </span>
         )}
+        {status === "noform" && (
+          <span
+            aria-label="noform"
+            className="text-yellow-600 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5" />
+            <span className="text-sm text-yellow-700">
+              No form detected
+            </span>
+          </span>
+        )}
       </div>
     </section>
   )

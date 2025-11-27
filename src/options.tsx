@@ -1,4 +1,12 @@
 import "~style.css"
+import { HashRouter as Router, Routes, Route } from "react-router-dom"
+import { Header } from "~features/components/ui/header"
+import Dashboard from "~pages/dashboard"
+import CustomFields from "~pages/dashboard/custom-fields"
+import Account from "~pages/AccountPage"
+import Login from "~pages/LoginPage"
+
+
 
 import {
   Navigate,
