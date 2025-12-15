@@ -153,5 +153,8 @@ export async function getStatusMessage(): Promise<string> {
   return "⛔ Daily limit reached"
 }
 
-// Re-export incrementGenerationCount for convenience
-export { incrementGenerationCount }
+// Re-export for convenience
+export {
+  incrementGenerationCount,
+  checkAndIncrementIfAllowed
+} from "./rateLimitService"

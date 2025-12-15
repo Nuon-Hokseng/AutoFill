@@ -1,5 +1,9 @@
 // Background script to show messages between popup and content scripts
-import { canGenerateData, incrementGenerationCount } from "~lib/rateLimitHelper"
+import {
+  canGenerateData,
+  checkAndIncrementIfAllowed,
+  incrementGenerationCount
+} from "~lib/rateLimitHelper"
 import { clearCache, hasCachedData, preloadData } from "~services/geminiService"
 import { getAIMode, getAutofillData } from "~services/storageService"
 
@@ -132,13 +136,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               return
             }
 
-            // If data comes from AI generation, increment the rate limit counter
+            // If data comes from AI generation, check and increment the rate limit counter
             if (source === "generated" && aiEnabled) {
               try {
-                console.log(`📋 Incrementing generation count...`)
-                await incrementGenerationCount()
+                console.log(`📋 Checking and incrementing generation count...`)
+
+                const result = await checkAndIncrementIfAllowed("device-local")
+
+                if (!result.canGenerate) {
+                  // This shouldn't happen since we checked earlier, but safety check
+                  console.warn(
+                    `⛔ Rate limit enforced! (should have been caught earlier)`
+                  )
+                  sendResponse({
+                    success: false,
+                    error: result.message,
+                    source: "none",
+                    aiEnabled: aiEnabled,
+                    rateLimited: true
+                  })
+                  return
+                }
+
                 console.log(
-                  `✅ Generation count incremented. Remaining uses: ${rateLimitStatus.remaining - 1}`
+                  `✅ Generation count incremented to ${result.newCount}/3`
                 )
               } catch (err) {
                 console.error(

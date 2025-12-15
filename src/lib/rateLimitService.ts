@@ -129,12 +129,77 @@ export async function incrementGenerationCount(): Promise<void> {
       }
 
       console.log(`⬆️ [incrementGenerationCount] Saving to storage:`, data)
+      // Use sync callback to ensure it's written before returning
       chrome.storage.local.set({ [STORAGE_KEY]: data }, () => {
         console.log(
           `✅ [incrementGenerationCount] Saved! Count: ${data.generationCount}/${FREE_TIER_DAILY_LIMIT}`
         )
         resolve()
       })
+    })
+  })
+}
+
+/**
+ * Check if we can generate, and if so, increment the counter atomically
+ * This prevents race conditions where multiple requests check before any increments
+ */
+export async function checkAndIncrementIfAllowed(userId: string): Promise<{
+  canGenerate: boolean
+  message: string | null
+  newCount: number
+}> {
+  const today = new Date().toISOString().split("T")[0]
+
+  return new Promise((resolve) => {
+    chrome.storage.local.get(STORAGE_KEY, async (result) => {
+      let data: RateLimitData = result[STORAGE_KEY] || {
+        generationCount: 0,
+        lastResetDate: today
+      }
+
+      // Reset counter if it's a new day
+      if (data.lastResetDate !== today) {
+        data = {
+          generationCount: 0,
+          lastResetDate: today
+        }
+      }
+
+      const remaining = Math.max(
+        0,
+        FREE_TIER_DAILY_LIMIT - data.generationCount
+      )
+      const canGenerate = remaining > 0
+
+      if (canGenerate) {
+        // Increment immediately
+        data.generationCount += 1
+        console.log(
+          `⬆️ [checkAndIncrementIfAllowed] Incremented to ${data.generationCount}`
+        )
+
+        chrome.storage.local.set({ [STORAGE_KEY]: data }, () => {
+          console.log(
+            `✅ [checkAndIncrementIfAllowed] Saved count: ${data.generationCount}`
+          )
+          resolve({
+            canGenerate: true,
+            message: null,
+            newCount: data.generationCount
+          })
+        })
+      } else {
+        // Don't increment, just report limited
+        const resetDate = new Date(today)
+        resetDate.setUTCDate(resetDate.getUTCDate() + 1)
+
+        resolve({
+          canGenerate: false,
+          message: `⛔ You've reached your daily limit of 3 auto-generates.`,
+          newCount: data.generationCount
+        })
+      }
     })
   })
 }
