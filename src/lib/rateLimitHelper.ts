@@ -1,12 +1,15 @@
 // Helper utility for handling rate limit messages and user interactions
 import { getUser } from "./authService"
 import {
+  clearLocalRateLimit,
   getRateLimitStatus,
   incrementGenerationCount
 } from "./rateLimitService"
 
 /**
  * Check if user can generate new data
+ * For logged-in users: checks database per user_id (clears local storage)
+ * For logged-out users: checks local storage
  * Returns { canGenerate, message, status }
  */
 export async function canGenerateData(): Promise<{
@@ -17,9 +20,10 @@ export async function canGenerateData(): Promise<{
 }> {
   try {
     const user = await getUser()
+
     if (!user) {
       // Check device-based rate limit for non-logged-in users
-      const rateLimitStatus = await getRateLimitStatus("device-local")
+      const rateLimitStatus = await getRateLimitStatus()
 
       if (rateLimitStatus.isLimited) {
         const resetTime = rateLimitStatus.resetTime
@@ -41,6 +45,10 @@ export async function canGenerateData(): Promise<{
       }
     }
 
+    // User is logged in - clear local storage to prevent cross-account limit bleed
+    await clearLocalRateLimit()
+
+    // Check database (per-account limit)
     const rateLimitStatus = await getRateLimitStatus(user.id)
 
     if (rateLimitStatus.paymentStatus === "PAID") {

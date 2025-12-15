@@ -141,7 +141,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               try {
                 console.log(`📋 Checking and incrementing generation count...`)
 
-                const result = await checkAndIncrementIfAllowed("device-local")
+                // Auto-detect user: logged-in users increment per-account in DB;
+                // logged-out users increment local storage.
+                const result = await checkAndIncrementIfAllowed()
 
                 if (!result.canGenerate) {
                   // This shouldn't happen since we checked earlier, but safety check

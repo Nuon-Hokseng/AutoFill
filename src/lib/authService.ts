@@ -1,4 +1,5 @@
 // authService.ts
+import { clearLocalRateLimit } from "./rateLimitService"
 import { supabase } from "./supabaseClient"
 import { clearLocalData } from "./syncService"
 
@@ -26,12 +27,21 @@ export async function login(email: string, password: string) {
   })
 
   if (error) throw error
+
+  // Clear local rate limit cache when user logs in
+  await clearLocalRateLimit()
+  console.log("✅ [authService.login] Rate limit cache cleared after login")
+
   return data
 }
 
 export async function logout() {
   // Clear all local data before signing out
   await clearLocalData()
+
+  // Clear local rate limit cache when user logs out
+  await clearLocalRateLimit()
+  console.log("✅ [authService.logout] Rate limit cache cleared after logout")
 
   const { error } = await supabase.auth.signOut()
   if (error) throw error
