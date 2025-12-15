@@ -1,4 +1,5 @@
 // Background script to show messages between popup and content scripts
+import { canGenerateData, incrementGenerationCount } from "~lib/rateLimitHelper"
 import { clearCache, hasCachedData, preloadData } from "~services/geminiService"
 import { getAIMode, getAutofillData } from "~services/storageService"
 
@@ -93,52 +94,93 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true
     }
 
-    // Get autofill data (custom or generated)
-    getAutofillData()
-      .then(async ({ data, source }) => {
-        if (!data) {
-          const aiEnabled = await getAIMode()
-          const errorMsg = aiEnabled
-            ? "Failed to fetch dummy data from backend. Please try again."
-            : "No custom data found. Please add custom credentials or enable AI mode."
+    // Check rate limit for AI-generated data
+    canGenerateData()
+      .then(async (rateLimitStatus) => {
+        const aiEnabled = await getAIMode()
 
-          console.error("❌ No autofill data available:", errorMsg)
+        // If AI mode is enabled but rate limit reached, block generation
+        if (aiEnabled && !rateLimitStatus.canGenerate) {
+          console.warn(
+            `⛔ Rate limit reached for AI generation. Remaining: ${rateLimitStatus.remaining}`
+          )
           sendResponse({
             success: false,
-            error: errorMsg,
+            error: rateLimitStatus.message,
             source: "none",
-            aiEnabled: aiEnabled
+            aiEnabled: aiEnabled,
+            rateLimited: true
           })
           return
         }
 
-        console.log(`📤 Sending ${source} data to content script`)
+        // Get autofill data (custom or generated)
+        getAutofillData()
+          .then(async ({ data, source }) => {
+            if (!data) {
+              const errorMsg = aiEnabled
+                ? "Failed to fetch dummy data from backend. Please try again."
+                : "No custom data found. Please add custom credentials or enable AI mode."
 
-        // Send data to content script
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs[0]?.id) {
-            chrome.tabs.sendMessage(
-              tabs[0].id,
-              {
-                type: "AUTOFILL_CREDENTIALS",
-                data: data,
-                source: source
-              },
-              (response) => {
-                sendResponse({
-                  ...(response || { success: false }),
-                  source: source
-                })
+              console.error("❌ No autofill data available:", errorMsg)
+              sendResponse({
+                success: false,
+                error: errorMsg,
+                source: "none",
+                aiEnabled: aiEnabled
+              })
+              return
+            }
+
+            // If data comes from AI generation, increment the rate limit counter
+            if (source === "generated" && aiEnabled) {
+              try {
+                console.log(`📋 Incrementing generation count...`)
+                await incrementGenerationCount()
+                console.log(
+                  `✅ Generation count incremented. Remaining uses: ${rateLimitStatus.remaining - 1}`
+                )
+              } catch (err) {
+                console.error(
+                  "Error incrementing generation count:",
+                  err?.message || err
+                )
+                // Don't block the fill if counter increment fails
               }
-            )
-          } else {
-            sendResponse({ success: false, error: "No active tab found" })
-          }
-        })
+            }
+
+            console.log(`📤 Sending ${source} data to content script`)
+
+            // Send data to content script
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+              if (tabs[0]?.id) {
+                chrome.tabs.sendMessage(
+                  tabs[0].id,
+                  {
+                    type: "AUTOFILL_CREDENTIALS",
+                    data: data,
+                    source: source
+                  },
+                  (response) => {
+                    sendResponse({
+                      ...(response || { success: false }),
+                      source: source
+                    })
+                  }
+                )
+              } else {
+                sendResponse({ success: false, error: "No active tab found" })
+              }
+            })
+          })
+          .catch((error) => {
+            console.error("Error getting autofill data:", error)
+            sendResponse({ success: false, error: error.message })
+          })
       })
       .catch((error) => {
-        console.error("Error getting autofill data:", error)
-        sendResponse({ success: false, error: error.message })
+        console.error("Error checking rate limit:", error)
+        sendResponse({ success: false, error: "Failed to check rate limit" })
       })
 
     return true

@@ -13,6 +13,7 @@ import { useEffect, useState } from "react"
 import CustomTab from "~components/custom-tab"
 import { FillButton } from "~components/fill-button"
 import ProfileTab from "~components/profile-tab"
+import RateLimitStatus from "~components/rate-limit-status"
 import { supabase } from "~lib/supabaseClient"
 import { syncWebsiteProfilesToSupabase } from "~lib/syncService"
 
@@ -203,6 +204,9 @@ export default function IndexPopup() {
                 onStatusChange={(s) => setIsFilling(s === "loading")}
               />
             </div>
+
+            {/* Rate Limit Status */}
+            <RateLimitStatus />
 
             {(filledCount ?? 0) > 0 || (totalCount ?? 0) > 0 ? (
               <div className="space-y-2">
