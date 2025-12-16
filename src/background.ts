@@ -139,11 +139,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             // If data comes from AI generation, check and increment the rate limit counter
             if (source === "generated" && aiEnabled) {
               try {
-                console.log(`📋 Checking and incrementing generation count...`)
+                console.log(`� Checking and incrementing generation count...`)
+
+                // Prefer stored user_id; if missing, function falls back to session/local
+                const storedUserId = await new Promise<string | undefined>(
+                  (resolve) => {
+                    chrome.storage.local.get("user_id", (res) =>
+                      resolve(res?.user_id)
+                    )
+                  }
+                )
 
                 // Auto-detect user: logged-in users increment per-account in DB;
-                // logged-out users increment local storage.
-                const result = await checkAndIncrementIfAllowed()
+                // logged-out users increment local storage. Passing userId lets us
+                // decrement even if there's no active auth session.
+                const result = await checkAndIncrementIfAllowed(storedUserId)
 
                 if (!result.canGenerate) {
                   // This shouldn't happen since we checked earlier, but safety check

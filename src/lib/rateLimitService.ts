@@ -2,8 +2,15 @@
 // Limits free users to 3 auto-generated data requests per day
 // For logged-in users: tracks per user_id in database
 // For logged-out users: tracks locally using device-local storage
+//
+// IMPORTANT: Ensure Supabase RLS policies on rate_limit_usage table allow:
+// - SELECT: users can select their own records (WHERE auth.uid() = user_id)
+// - UPDATE: users can update their own records (WHERE auth.uid() = user_id)
+// - INSERT: users can insert their own records (WHERE auth.uid() = user_id)
+// Without these policies, database updates will silently fail!
 
 import { getUser } from "./authService"
+import { supabaseAdmin } from "./supabaseAdmin"
 import { supabase } from "./supabaseClient"
 
 interface RateLimitData {
@@ -80,6 +87,14 @@ export async function getRateLimitStatus(userId?: string): Promise<{
     }
   }
 
+  const dbClient =
+    supabaseAdmin &&
+    effectiveUserId &&
+    effectiveUserId !== "device-local" &&
+    userId
+      ? supabaseAdmin
+      : supabase
+
   // If we have a real user ID and it's not device-local, check payment and database
   if (effectiveUserId && effectiveUserId !== "device-local") {
     console.log(`🔐 [getRateLimitStatus] User detected: ${effectiveUserId}`)
@@ -101,7 +116,7 @@ export async function getRateLimitStatus(userId?: string): Promise<{
     // For free users with account, check database (12h window, remaining credits model)
     try {
       // Get the latest record for the user
-      const { data, error } = await supabase
+      const { data, error } = await dbClient
         .from("rate_limit_usage")
         .select("generation_count, updated_at")
         .eq("user_id", effectiveUserId)
@@ -121,7 +136,7 @@ export async function getRateLimitStatus(userId?: string): Promise<{
 
       // If no record, create with full credits
       if (!data) {
-        await supabase.from("rate_limit_usage").insert({
+        await dbClient.from("rate_limit_usage").insert({
           user_id: effectiveUserId,
           generation_count: FREE_TIER_CREDITS,
           last_reset_date: today,
@@ -138,7 +153,7 @@ export async function getRateLimitStatus(userId?: string): Promise<{
 
       // Reset window if expired
       if (isExpiredSince(data.updated_at as any, RESET_WINDOW_HOURS)) {
-        await supabase
+        await dbClient
           .from("rate_limit_usage")
           .update({
             generation_count: FREE_TIER_CREDITS,
@@ -248,7 +263,7 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
   const today = new Date().toISOString().split("T")[0]
   console.log(`⬆️ [incrementGenerationCount] Called for date: ${today}`)
 
-  // Try to get current user if userId not provided
+  // Prefer provided userId; only hit auth if missing
   let currentUser = null
   let effectiveUserId = userId
 
@@ -264,6 +279,14 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
     }
   }
 
+  const dbClient =
+    supabaseAdmin &&
+    effectiveUserId &&
+    effectiveUserId !== "device-local" &&
+    userId
+      ? supabaseAdmin
+      : supabase
+
   // If we have a real user ID (not device-local), update database
   if (effectiveUserId && effectiveUserId !== "device-local") {
     try {
@@ -272,7 +295,7 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
       )
 
       // Get latest record
-      const { data: existingData, error: selectError } = await supabase
+      const { data: existingData, error: selectError } = await dbClient
         .from("rate_limit_usage")
         .select("generation_count, updated_at")
         .eq("user_id", effectiveUserId)
@@ -287,38 +310,54 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
       if (!selectError && existingData) {
         // Reset window if expired
         let remaining = existingData.generation_count
+        console.log(
+          `📊 [incrementGenerationCount] Current remaining: ${remaining}`
+        )
         if (
           isExpiredSince(existingData.updated_at as any, RESET_WINDOW_HOURS)
         ) {
           remaining = FREE_TIER_CREDITS
+          console.log(
+            `⏰ [incrementGenerationCount] Reset window expired, resetting to ${FREE_TIER_CREDITS}`
+          )
         }
         // Decrement if available
-        remaining = Math.max(0, remaining - 1)
-        const { error: updateError } = await supabase
+        const newRemaining = Math.max(0, remaining - 1)
+        console.log(
+          `🔽 [incrementGenerationCount] Decrementing: ${remaining} -> ${newRemaining}`
+        )
+
+        const { data: updateData, error: updateError } = await dbClient
           .from("rate_limit_usage")
           .update({
-            generation_count: remaining,
+            generation_count: newRemaining,
             updated_at: new Date().toISOString(),
             last_reset_date: today
           })
           .eq("user_id", effectiveUserId)
+          .select()
 
         if (updateError) {
           console.error(
             "❌ [incrementGenerationCount] DB update error:",
+            updateError.message,
             updateError
           )
           // Still return - don't fall back for logged-in users
           return
         } else {
           console.log(
-            `✅ [incrementGenerationCount] DB updated to: ${existingData.generation_count + 1}`
+            `✅ [incrementGenerationCount] DB updated successfully!`,
+            updateData
+          )
+          console.log(
+            `✅ [incrementGenerationCount] New remaining: ${newRemaining}`
           )
           return
         }
       } else if (selectError && selectError.code === "PGRST116") {
         // No record, create one with remaining-1
-        const { error: insertError } = await supabase
+        const { error: insertError } = await dbClient
           .from("rate_limit_usage")
           .insert({
             user_id: effectiveUserId,
@@ -401,7 +440,7 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
 }> {
   const today = new Date().toISOString().split("T")[0]
 
-  // Try to get current user if userId not provided
+  // Prefer the provided userId; only hit auth if missing
   let currentUser = null
   let effectiveUserId = userId
 
@@ -417,6 +456,15 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
     }
   }
 
+  // Choose client: if caller supplied userId and admin client exists, use admin to avoid auth requirement
+  const dbClient =
+    supabaseAdmin &&
+    effectiveUserId &&
+    effectiveUserId !== "device-local" &&
+    userId
+      ? supabaseAdmin
+      : supabase
+
   // If we have a real user ID (not device-local), use database
   if (effectiveUserId && effectiveUserId !== "device-local") {
     try {
@@ -425,25 +473,33 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
       )
 
       // Get latest record (12h window, remaining credits model)
-      const { data: existingData, error: selectError } = await supabase
+      const { data: existingData, error: selectError } = await dbClient
         .from("rate_limit_usage")
-        .select("generation_count, updated_at")
+        .select("generation_count, updated_at, id")
         .eq("user_id", effectiveUserId)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle()
 
+      console.log(`📊 [checkAndIncrementIfAllowed] Fetched data:`, existingData)
+
       let remaining = FREE_TIER_CREDITS
       if (!selectError && existingData) {
         remaining = existingData.generation_count
+        console.log(
+          `📊 [checkAndIncrementIfAllowed] Current remaining: ${remaining}`
+        )
         if (
           isExpiredSince(existingData.updated_at as any, RESET_WINDOW_HOURS)
         ) {
           remaining = FREE_TIER_CREDITS
+          console.log(
+            `⏰ [checkAndIncrementIfAllowed] Reset window expired, resetting to ${FREE_TIER_CREDITS}`
+          )
         }
       } else if (selectError && selectError.code === "PGRST116") {
         // No record, create one
-        await supabase.from("rate_limit_usage").insert({
+        await dbClient.from("rate_limit_usage").insert({
           user_id: effectiveUserId,
           generation_count: FREE_TIER_CREDITS,
           last_reset_date: today,
@@ -461,7 +517,18 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
       const canGenerate = remaining > 0
       if (canGenerate) {
         const newRemaining = Math.max(0, remaining - 1)
-        const { error: updateError } = await supabase
+        console.log(
+          `🔽 [checkAndIncrementIfAllowed] Decrementing: ${remaining} -> ${newRemaining}`
+        )
+        console.log(
+          `🎯 [checkAndIncrementIfAllowed] Updating record with id: ${existingData?.id}, user_id: ${effectiveUserId}`
+        )
+
+        const {
+          data: updateData,
+          error: updateError,
+          count
+        } = await dbClient
           .from("rate_limit_usage")
           .update({
             generation_count: newRemaining,
@@ -469,21 +536,82 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
             last_reset_date: today
           })
           .eq("user_id", effectiveUserId)
+          .select()
+
+        console.log(`📝 [checkAndIncrementIfAllowed] Update response:`, {
+          updateData,
+          updateError,
+          count
+        })
 
         if (updateError) {
           console.error(
             "❌ [checkAndIncrementIfAllowed] Update error:",
+            updateError.message,
             updateError
           )
-        } else {
-          console.log(
-            `✅ [checkAndIncrementIfAllowed] DB decremented, remaining ${newRemaining}`
-          )
           return {
-            canGenerate: true,
-            message: null,
-            newCount: newRemaining
+            canGenerate: false,
+            message: "Failed to update rate limit",
+            newCount: remaining
           }
+        }
+
+        if (!updateData || updateData.length === 0) {
+          console.warn(
+            "⚠️ [checkAndIncrementIfAllowed] Update returned no rows! Possible RLS policy issue."
+          )
+          console.log(
+            `🔍 [checkAndIncrementIfAllowed] Attempting direct update verification...`
+          )
+
+          // Verify the update actually happened
+          const { data: verifyData } = await dbClient
+            .from("rate_limit_usage")
+            .select("generation_count")
+            .eq("user_id", effectiveUserId)
+            .single()
+
+          console.log(
+            `✔️ [checkAndIncrementIfAllowed] Database verification:`,
+            verifyData
+          )
+
+          if (verifyData?.generation_count === newRemaining) {
+            console.log(
+              `✅ [checkAndIncrementIfAllowed] Update verified! New remaining: ${newRemaining}`
+            )
+            return {
+              canGenerate: true,
+              message: null,
+              newCount: newRemaining
+            }
+          } else {
+            console.error(
+              `❌ [checkAndIncrementIfAllowed] Verification failed! Database still shows: ${verifyData?.generation_count}, expected: ${newRemaining}`
+            )
+            console.error(
+              `❌ RLS policies are likely NOT applied correctly. Check Supabase RLS settings.`
+            )
+            return {
+              canGenerate: false,
+              message: "Rate limit update failed (RLS policy issue)",
+              newCount: remaining
+            }
+          }
+        }
+
+        console.log(
+          `✅ [checkAndIncrementIfAllowed] DB updated successfully!`,
+          updateData
+        )
+        console.log(
+          `✅ [checkAndIncrementIfAllowed] New remaining: ${newRemaining}`
+        )
+        return {
+          canGenerate: true,
+          message: null,
+          newCount: newRemaining
         }
       } else {
         console.log(
