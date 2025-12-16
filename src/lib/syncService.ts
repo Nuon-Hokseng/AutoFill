@@ -6,6 +6,7 @@ import {
   generateEncryptionPassword,
   retrieveAndDecrypt
 } from "./encryptionService"
+import { syncRateLimitFromDatabase } from "./rateLimitService"
 import { supabase } from "./supabaseClient"
 
 // Custom field data interface - ALL fields from custom tab
@@ -255,6 +256,10 @@ export async function syncProfileFromSupabase(): Promise<SyncResult> {
       last_sync_timestamp: syncedAt,
       sync_pending: false
     })
+
+    // Also sync rate limit from database to ensure consistency across devices
+    await syncRateLimitFromDatabase(user.id)
+    console.log("✅ Rate limit synced from database")
 
     console.log("✅ All data synced from Supabase successfully")
     return { success: true, syncedAt }

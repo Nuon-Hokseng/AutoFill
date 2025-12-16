@@ -1,5 +1,8 @@
 // authService.ts
-import { clearLocalRateLimit } from "./rateLimitService"
+import {
+  clearLocalRateLimit,
+  syncRateLimitFromDatabase
+} from "./rateLimitService"
 import { supabase } from "./supabaseClient"
 import { clearLocalData } from "./syncService"
 
@@ -49,6 +52,14 @@ export async function login(email: string, password: string) {
   // Clear local rate limit cache when user logs in
   await clearLocalRateLimit()
   console.log("✅ [authService.login] Rate limit cache cleared after login")
+
+  // Sync rate limit from database to ensure consistency across devices
+  if (data?.user?.id) {
+    await syncRateLimitFromDatabase(data.user.id)
+    console.log(
+      "✅ [authService.login] Rate limit synced from database after login"
+    )
+  }
 
   return data
 }

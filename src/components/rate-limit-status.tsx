@@ -7,9 +7,11 @@ import {
   CardHeader,
   CardTitle
 } from "~features/components/ui/card"
+import { getUser } from "~lib/authService"
 import {
   getCachedPaymentStatus,
-  getRateLimitStats
+  getRateLimitStats,
+  syncRateLimitFromDatabase
 } from "~lib/rateLimitService"
 
 interface RateLimitStats {
@@ -27,6 +29,21 @@ export function RateLimitStatus() {
   useEffect(() => {
     const loadStats = async () => {
       try {
+        // First, sync rate limit from database if user is logged in
+        try {
+          const user = await getUser()
+          if (user?.id) {
+            await syncRateLimitFromDatabase(user.id)
+            console.log("✅ [RateLimitStatus] Rate limit synced from database")
+          }
+        } catch (syncError) {
+          console.warn(
+            "⚠️ [RateLimitStatus] Failed to sync rate limit:",
+            syncError
+          )
+        }
+
+        // Then load the stats
         const limitStats = await getRateLimitStats()
         const paymentStatus = await getCachedPaymentStatus()
 

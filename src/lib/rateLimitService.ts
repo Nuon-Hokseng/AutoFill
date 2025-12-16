@@ -723,6 +723,8 @@ export async function resetRateLimit(): Promise<void> {
 
 /**
  * Get rate limit stats (for dashboard display)
+ * For logged-in users: fetches from database
+ * For logged-out users: fetches from local storage
  */
 export async function getRateLimitStats(): Promise<{
   generationCount: number
@@ -730,13 +732,57 @@ export async function getRateLimitStats(): Promise<{
   percentageUsed: number
   lastReset: string
 }> {
+  const today = new Date().toISOString().split("T")[0]
+
+  // Try to get current user
+  let currentUser = null
+  try {
+    currentUser = await getUser()
+  } catch (error) {
+    console.log("ℹ️ [getRateLimitStats] No logged-in user")
+  }
+
+  // If user is logged in, fetch from database
+  if (currentUser?.id) {
+    try {
+      const { data, error } = await supabase
+        .from("rate_limit_usage")
+        .select("generation_count, updated_at, bonus_uses")
+        .eq("user_id", currentUser.id)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (!error && data) {
+        // Check if reset window expired
+        let remaining = data.generation_count
+        if (isExpiredSince(data.updated_at as any, RESET_WINDOW_HOURS)) {
+          remaining = FREE_TIER_CREDITS
+        }
+
+        const used = Math.max(0, FREE_TIER_CREDITS - remaining)
+        const bonusUses = data.bonus_uses || 0
+        const dailyLimit = FREE_TIER_CREDITS + bonusUses
+
+        return {
+          generationCount: used,
+          dailyLimit: dailyLimit,
+          percentageUsed: Math.round((used / dailyLimit) * 100),
+          lastReset: (data.updated_at as string) || today
+        }
+      }
+    } catch (dbError) {
+      console.error("❌ [getRateLimitStats] Database error:", dbError)
+    }
+  }
+
+  // Fallback to local storage (for non-logged-in users)
   return new Promise<{
     generationCount: number
     dailyLimit: number
     percentageUsed: number
     lastReset: string
   }>((resolve) => {
-    const today = new Date().toISOString().split("T")[0]
     chrome.storage.local.get(STORAGE_KEY, (result) => {
       const data: any = result[STORAGE_KEY] || {
         remaining: FREE_TIER_CREDITS,
@@ -771,6 +817,77 @@ export async function clearLocalRateLimit(): Promise<void> {
       resolve()
     })
   })
+}
+
+/**
+ * Sync rate limit from database to ensure consistency across devices
+ * This should be called when user logs in to ensure their rate limit is up-to-date
+ * @param userId - The user ID to sync rate limit for
+ */
+export async function syncRateLimitFromDatabase(userId: string): Promise<void> {
+  try {
+    console.log(`🔄 [syncRateLimitFromDatabase] Syncing for user: ${userId}`)
+    const today = new Date().toISOString().split("T")[0]
+
+    // Get the latest record for the user from database
+    const { data, error } = await supabase
+      .from("rate_limit_usage")
+      .select("generation_count, updated_at, bonus_uses, last_reset_date")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error && error.code !== "PGRST116") {
+      console.warn(`⚠️ [syncRateLimitFromDatabase] DB error: ${error.message}`)
+      return
+    }
+
+    // If no record exists, create one with full credits
+    if (!data) {
+      console.log(
+        `📝 [syncRateLimitFromDatabase] No record found, creating new one`
+      )
+      await supabase.from("rate_limit_usage").insert({
+        user_id: userId,
+        generation_count: FREE_TIER_CREDITS,
+        last_reset_date: today,
+        updated_at: new Date().toISOString(),
+        bonus_uses: 0
+      })
+      console.log(
+        `✅ [syncRateLimitFromDatabase] Created new record with ${FREE_TIER_CREDITS} credits`
+      )
+      return
+    }
+
+    // Check if the reset window has expired (12 hours since last update)
+    if (isExpiredSince(data.updated_at as any, RESET_WINDOW_HOURS)) {
+      console.log(
+        `⏰ [syncRateLimitFromDatabase] Reset window expired, refreshing credits`
+      )
+      await supabase
+        .from("rate_limit_usage")
+        .update({
+          generation_count: FREE_TIER_CREDITS,
+          last_reset_date: today,
+          updated_at: new Date().toISOString()
+        })
+        .eq("user_id", userId)
+
+      console.log(
+        `✅ [syncRateLimitFromDatabase] Credits refreshed to ${FREE_TIER_CREDITS}`
+      )
+    } else {
+      console.log(
+        `✅ [syncRateLimitFromDatabase] Rate limit synced: ${data.generation_count} credits remaining`
+      )
+    }
+  } catch (error) {
+    console.error(
+      `❌ [syncRateLimitFromDatabase] Sync failed: ${error.message || error}`
+    )
+  }
 }
 
 /**
