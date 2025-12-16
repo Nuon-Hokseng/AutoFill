@@ -14,8 +14,41 @@ interface RateLimitData {
 }
 
 const STORAGE_KEY = "rateLimitData"
-const FREE_TIER_DAILY_LIMIT = 3
-const LOGIN_BONUS_USES = 3 // Bonus uses when logging in after hitting limit
+const FREE_TIER_CREDITS = 3 // Remaining credits model (count down from 3)
+const RESET_WINDOW_HOURS = 12 // Renew credits every 12 hours
+const LOGIN_BONUS_USES = 3 // Bonus uses when logging in after hitting limit (only if you keep bonus logic)
+
+type LocalRateV1 = {
+  generationCount: number
+  lastResetDate: string
+  bonusUses?: number
+}
+
+type LocalRateV2 = {
+  remaining: number
+  lastResetAt: string // ISO timestamp
+}
+
+function nowUtc(): Date {
+  const n = new Date()
+  return new Date(n.toISOString())
+}
+
+function addHours(d: Date, h: number): Date {
+  const c = new Date(d)
+  c.setUTCHours(c.getUTCHours() + h)
+  return c
+}
+
+function isExpiredSince(
+  lastIso: string | null | undefined,
+  hours: number
+): boolean {
+  if (!lastIso) return true
+  const last = new Date(lastIso)
+  const n = nowUtc()
+  return n.getTime() - last.getTime() >= hours * 60 * 60 * 1000
+}
 
 /**
  * Get current rate limit status for a user
@@ -65,87 +98,72 @@ export async function getRateLimitStatus(userId?: string): Promise<{
       }
     }
 
-    // For free users with account, check database
+    // For free users with account, check database (12h window, remaining credits model)
     try {
-      console.log(
-        `🔍 [getRateLimitStatus] Querying DB for user: ${effectiveUserId}, date: ${today}`
-      )
-
+      // Get the latest record for the user
       const { data, error } = await supabase
         .from("rate_limit_usage")
-        .select("generation_count, last_reset_date, bonus_uses")
+        .select("generation_count, updated_at")
         .eq("user_id", effectiveUserId)
-        .eq("last_reset_date", today)
-        .single()
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-      console.log(
-        `🔍 [getRateLimitStatus] DB Query result - Error: ${error ? error.message : "none"}, Data: ${data ? JSON.stringify(data) : "null"}`
-      )
-
-      if (!error && data) {
-        // Found today's record
-        const totalDailyLimit = FREE_TIER_DAILY_LIMIT + (data.bonus_uses || 0)
-        const remaining = Math.max(0, totalDailyLimit - data.generation_count)
-        const isLimited = remaining <= 0
-
-        console.log(
-          `✅ [getRateLimitStatus] DB Count: ${data.generation_count}/${totalDailyLimit}, Remaining: ${remaining}, Limited: ${isLimited}`
-        )
-
-        const resetDate = new Date(today)
-        resetDate.setUTCDate(resetDate.getUTCDate() + 1)
-        resetDate.setUTCHours(0, 0, 0, 0)
-        const resetTime = resetDate.toISOString()
-
+      if (error && error.code !== "PGRST116") {
+        console.warn(`⚠️ [getRateLimitStatus] DB error: ${error.message}`)
         return {
-          remaining,
-          isLimited,
-          resetTime: isLimited ? resetTime : null,
-          paymentStatus
-        }
-      } else if (error && error.code !== "PGRST116") {
-        // PGRST116 means no rows found (first time today), which is fine
-        console.warn(
-          `⚠️ [getRateLimitStatus] Database error (non-PGRST116): ${error.message}`
-        )
-        // IMPORTANT: Do not fall back to local storage on error for logged-in users
-        // Return a default to prevent local storage bypass
-        return {
-          remaining: FREE_TIER_DAILY_LIMIT,
+          remaining: FREE_TIER_CREDITS,
           isLimited: false,
-          resetTime: null,
+          resetTime: addHours(nowUtc(), RESET_WINDOW_HOURS).toISOString(),
           paymentStatus
         }
       }
 
-      // No record for today (PGRST116), create one
-      console.log(
-        `📝 [getRateLimitStatus] No record found, creating new one for today`
-      )
-
-      const { error: insertError } = await supabase
-        .from("rate_limit_usage")
-        .insert({
+      // If no record, create with full credits
+      if (!data) {
+        await supabase.from("rate_limit_usage").insert({
           user_id: effectiveUserId,
-          generation_count: 0,
+          generation_count: FREE_TIER_CREDITS,
           last_reset_date: today,
+          updated_at: new Date().toISOString(),
           bonus_uses: 0
         })
-
-      if (insertError) {
-        console.warn(
-          `⚠️ [getRateLimitStatus] Failed to create rate limit record: ${insertError.message}`
-        )
-      } else {
-        console.log(
-          `✅ [getRateLimitStatus] New record created for user: ${effectiveUserId}`
-        )
+        return {
+          remaining: FREE_TIER_CREDITS,
+          isLimited: false,
+          resetTime: addHours(nowUtc(), RESET_WINDOW_HOURS).toISOString(),
+          paymentStatus
+        }
       }
 
+      // Reset window if expired
+      if (isExpiredSince(data.updated_at as any, RESET_WINDOW_HOURS)) {
+        await supabase
+          .from("rate_limit_usage")
+          .update({
+            generation_count: FREE_TIER_CREDITS,
+            last_reset_date: today,
+            updated_at: new Date().toISOString()
+          })
+          .eq("user_id", effectiveUserId)
+
+        return {
+          remaining: FREE_TIER_CREDITS,
+          isLimited: false,
+          resetTime: addHours(nowUtc(), RESET_WINDOW_HOURS).toISOString(),
+          paymentStatus
+        }
+      }
+
+      const remaining = Math.max(0, data.generation_count)
+      const resetTime = addHours(
+        new Date(data.updated_at as any),
+        RESET_WINDOW_HOURS
+      ).toISOString()
       return {
-        remaining: FREE_TIER_DAILY_LIMIT,
-        isLimited: false,
-        resetTime: null,
+        remaining,
+        isLimited: remaining <= 0,
+        resetTime,
         paymentStatus
       }
     } catch (dbError) {
@@ -153,7 +171,7 @@ export async function getRateLimitStatus(userId?: string): Promise<{
       // IMPORTANT: For logged-in users, return fresh limit instead of falling back
       // This prevents the local storage from interfering
       return {
-        remaining: FREE_TIER_DAILY_LIMIT,
+        remaining: FREE_TIER_CREDITS,
         isLimited: false,
         resetTime: null,
         paymentStatus: "NOT_FOUND"
@@ -164,54 +182,59 @@ export async function getRateLimitStatus(userId?: string): Promise<{
   // For non-logged-in users or fallback: use local storage
   console.log(`🔍 [getRateLimitStatus] Using local storage for date: ${today}`)
 
-  const rateLimitData = await new Promise<RateLimitData>((resolve) => {
+  const rateLimitData = await new Promise<any>((resolve) => {
     chrome.storage.local.get(STORAGE_KEY, (result) => {
       console.log(`🔍 [getRateLimitStatus] Storage result:`, result)
-      let data: RateLimitData = result[STORAGE_KEY] || {
-        generationCount: 0,
-        lastResetDate: today
-      }
+      let data: any = result[STORAGE_KEY]
 
-      console.log(`🔍 [getRateLimitStatus] Current data:`, data)
-
-      // Reset counter if it's a new day
-      if (data.lastResetDate !== today) {
-        console.log(
-          `🔄 [getRateLimitStatus] New day detected, resetting counter`
-        )
+      // Migrate V1 -> V2 if needed
+      if (!data) {
         data = {
-          generationCount: 0,
-          lastResetDate: today
-        }
-        // IMPORTANT: Wait for storage to complete before resolving
-        chrome.storage.local.set({ [STORAGE_KEY]: data }, () => {
-          console.log(`💾 [getRateLimitStatus] Reset data saved to storage`)
-          resolve(data)
-        })
-      } else {
-        resolve(data)
+          remaining: FREE_TIER_CREDITS,
+          lastResetAt: new Date().toISOString()
+        } as LocalRateV2
+        chrome.storage.local.set({ [STORAGE_KEY]: data }, () => resolve(data))
+        return
       }
+
+      if (data && typeof data.remaining !== "number") {
+        // V1 shape: generationCount used up; convert to remaining
+        const used = Math.max(0, (data as LocalRateV1).generationCount || 0)
+        const remaining = Math.max(0, FREE_TIER_CREDITS - used)
+        data = {
+          remaining,
+          lastResetAt: new Date().toISOString()
+        } as LocalRateV2
+        chrome.storage.local.set({ [STORAGE_KEY]: data }, () => resolve(data))
+        return
+      }
+
+      // Reset if 12h window expired
+      if (
+        isExpiredSince((data as LocalRateV2).lastResetAt, RESET_WINDOW_HOURS)
+      ) {
+        data = {
+          remaining: FREE_TIER_CREDITS,
+          lastResetAt: new Date().toISOString()
+        } as LocalRateV2
+        chrome.storage.local.set({ [STORAGE_KEY]: data }, () => resolve(data))
+        return
+      }
+
+      resolve(data)
     })
   })
 
-  const totalDailyLimit = FREE_TIER_DAILY_LIMIT + (rateLimitData.bonusUses || 0)
-  const remaining = Math.max(0, totalDailyLimit - rateLimitData.generationCount)
-  const isLimited = remaining <= 0
-
-  console.log(
-    `📊 [getRateLimitStatus] Local Count: ${rateLimitData.generationCount}/${totalDailyLimit} (base: ${FREE_TIER_DAILY_LIMIT}, bonus: ${rateLimitData.bonusUses || 0}), Remaining: ${remaining}, Limited: ${isLimited}`
-  )
-
-  // Calculate reset time (midnight UTC next day)
-  const resetDate = new Date(today)
-  resetDate.setUTCDate(resetDate.getUTCDate() + 1)
-  resetDate.setUTCHours(0, 0, 0, 0)
-  const resetTime = resetDate.toISOString()
+  const remaining = Math.max(0, (rateLimitData as LocalRateV2).remaining)
+  const resetTime = addHours(
+    new Date((rateLimitData as LocalRateV2).lastResetAt),
+    RESET_WINDOW_HOURS
+  ).toISOString()
 
   return {
     remaining,
-    isLimited,
-    resetTime: isLimited ? resetTime : null,
+    isLimited: remaining <= 0,
+    resetTime: resetTime,
     paymentStatus: "NOT_FOUND"
   }
 }
@@ -248,27 +271,37 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
         `🔐 [incrementGenerationCount] User detected, updating DB for: ${effectiveUserId}`
       )
 
-      // First try to update existing record
+      // Get latest record
       const { data: existingData, error: selectError } = await supabase
         .from("rate_limit_usage")
-        .select("generation_count")
+        .select("generation_count, updated_at")
         .eq("user_id", effectiveUserId)
-        .eq("last_reset_date", today)
-        .single()
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
       console.log(
         `🔍 [incrementGenerationCount] Query result - Error: ${selectError ? selectError.message : "none"}, Data: ${existingData ? existingData.generation_count : "null"}`
       )
 
       if (!selectError && existingData) {
-        // Record exists, increment it
+        // Reset window if expired
+        let remaining = existingData.generation_count
+        if (
+          isExpiredSince(existingData.updated_at as any, RESET_WINDOW_HOURS)
+        ) {
+          remaining = FREE_TIER_CREDITS
+        }
+        // Decrement if available
+        remaining = Math.max(0, remaining - 1)
         const { error: updateError } = await supabase
           .from("rate_limit_usage")
           .update({
-            generation_count: existingData.generation_count + 1
+            generation_count: remaining,
+            updated_at: new Date().toISOString(),
+            last_reset_date: today
           })
           .eq("user_id", effectiveUserId)
-          .eq("last_reset_date", today)
 
         if (updateError) {
           console.error(
@@ -284,14 +317,15 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
           return
         }
       } else if (selectError && selectError.code === "PGRST116") {
-        // No record for today, create one
+        // No record, create one with remaining-1
         const { error: insertError } = await supabase
           .from("rate_limit_usage")
           .insert({
             user_id: effectiveUserId,
-            generation_count: 1,
+            generation_count: Math.max(0, FREE_TIER_CREDITS - 1),
             last_reset_date: today,
-            bonus_uses: 0
+            bonus_uses: 0,
+            updated_at: new Date().toISOString()
           })
 
         if (insertError) {
@@ -323,37 +357,30 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
   // Fallback to local storage (only for non-logged-in users)
   return new Promise<void>((resolve) => {
     chrome.storage.local.get(STORAGE_KEY, (result) => {
-      console.log(`⬆️ [incrementGenerationCount] Current storage:`, result)
-      let data: RateLimitData = result[STORAGE_KEY] || {
-        generationCount: 0,
-        lastResetDate: today
+      let data: any = result[STORAGE_KEY]
+      const defaultV2: LocalRateV2 = {
+        remaining: FREE_TIER_CREDITS,
+        lastResetAt: new Date().toISOString()
       }
-
-      console.log(`⬆️ [incrementGenerationCount] Before increment:`, data)
-
-      // Reset counter if it's a new day
-      if (data.lastResetDate !== today) {
-        console.log(`⬆️ [incrementGenerationCount] New day, setting to 1`)
+      if (!data) data = defaultV2
+      if (typeof data.remaining !== "number") {
+        const used = Math.max(0, (data as LocalRateV1).generationCount || 0)
         data = {
-          generationCount: 1,
-          lastResetDate: today
-        }
-      } else {
-        const oldCount = data.generationCount
-        data.generationCount = Math.min(
-          data.generationCount + 1,
-          FREE_TIER_DAILY_LIMIT + 1
-        )
-        console.log(
-          `⬆️ [incrementGenerationCount] Incremented from ${oldCount} to ${data.generationCount}`
-        )
+          remaining: Math.max(0, FREE_TIER_CREDITS - used),
+          lastResetAt: new Date().toISOString()
+        } as LocalRateV2
       }
-
-      console.log(`⬆️ [incrementGenerationCount] Saving to storage:`, data)
+      if (
+        isExpiredSince((data as LocalRateV2).lastResetAt, RESET_WINDOW_HOURS)
+      ) {
+        data = defaultV2
+      }
+      data.remaining = Math.max(0, (data as LocalRateV2).remaining - 1)
+      data.lastResetAt = new Date().toISOString()
       // Use sync callback to ensure it's written before returning
       chrome.storage.local.set({ [STORAGE_KEY]: data }, () => {
         console.log(
-          `✅ [incrementGenerationCount] Saved! Count: ${data.generationCount}/${FREE_TIER_DAILY_LIMIT}`
+          `✅ [incrementGenerationCount] Local saved remaining: ${(data as LocalRateV2).remaining}`
         )
         resolve()
       })
@@ -397,37 +424,33 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
         `🔍 [checkAndIncrementIfAllowed] Checking DB for user: ${effectiveUserId}`
       )
 
-      // Get or create record for today
+      // Get latest record (12h window, remaining credits model)
       const { data: existingData, error: selectError } = await supabase
         .from("rate_limit_usage")
-        .select("generation_count, bonus_uses")
+        .select("generation_count, updated_at")
         .eq("user_id", effectiveUserId)
-        .eq("last_reset_date", today)
-        .single()
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-      let currentCount = 0
-      let bonusUses = 0
-
+      let remaining = FREE_TIER_CREDITS
       if (!selectError && existingData) {
-        currentCount = existingData.generation_count
-        bonusUses = existingData.bonus_uses || 0
-      } else if (selectError && selectError.code === "PGRST116") {
-        // No record for today, will create one
-        const { error: insertError } = await supabase
-          .from("rate_limit_usage")
-          .insert({
-            user_id: effectiveUserId,
-            generation_count: 0,
-            last_reset_date: today,
-            bonus_uses: 0
-          })
-
-        if (insertError) {
-          console.error(
-            "❌ [checkAndIncrementIfAllowed] Insert error:",
-            insertError
-          )
+        remaining = existingData.generation_count
+        if (
+          isExpiredSince(existingData.updated_at as any, RESET_WINDOW_HOURS)
+        ) {
+          remaining = FREE_TIER_CREDITS
         }
+      } else if (selectError && selectError.code === "PGRST116") {
+        // No record, create one
+        await supabase.from("rate_limit_usage").insert({
+          user_id: effectiveUserId,
+          generation_count: FREE_TIER_CREDITS,
+          last_reset_date: today,
+          updated_at: new Date().toISOString(),
+          bonus_uses: 0
+        })
+        remaining = FREE_TIER_CREDITS
       } else if (selectError) {
         console.error(
           "❌ [checkAndIncrementIfAllowed] Select error:",
@@ -435,19 +458,17 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
         )
       }
 
-      const remaining = Math.max(
-        0,
-        FREE_TIER_DAILY_LIMIT + bonusUses - currentCount
-      )
       const canGenerate = remaining > 0
-
       if (canGenerate) {
-        // Increment in database
+        const newRemaining = Math.max(0, remaining - 1)
         const { error: updateError } = await supabase
           .from("rate_limit_usage")
-          .update({ generation_count: currentCount + 1 })
+          .update({
+            generation_count: newRemaining,
+            updated_at: new Date().toISOString(),
+            last_reset_date: today
+          })
           .eq("user_id", effectiveUserId)
-          .eq("last_reset_date", today)
 
         if (updateError) {
           console.error(
@@ -456,25 +477,22 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
           )
         } else {
           console.log(
-            `✅ [checkAndIncrementIfAllowed] DB incremented to ${currentCount + 1}`
+            `✅ [checkAndIncrementIfAllowed] DB decremented, remaining ${newRemaining}`
           )
           return {
             canGenerate: true,
             message: null,
-            newCount: currentCount + 1
+            newCount: newRemaining
           }
         }
       } else {
         console.log(
-          `⛔ [checkAndIncrementIfAllowed] User limited at DB count: ${currentCount}`
+          `⛔ [checkAndIncrementIfAllowed] User limited at DB remaining: ${remaining}`
         )
-        const resetDate = new Date(today)
-        resetDate.setUTCDate(resetDate.getUTCDate() + 1)
-
         return {
           canGenerate: false,
-          message: `⛔ You've reached your daily limit of ${FREE_TIER_DAILY_LIMIT + bonusUses} auto-generates.`,
-          newCount: currentCount
+          message: `⛔ You've reached your limit. Credits renew in 12 hours.`,
+          newCount: remaining
         }
       }
     } catch (dbError) {
@@ -486,51 +504,48 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
   // Fallback to local storage
   return new Promise((resolve) => {
     chrome.storage.local.get(STORAGE_KEY, async (result) => {
-      let data: RateLimitData = result[STORAGE_KEY] || {
-        generationCount: 0,
-        lastResetDate: today
+      let data: any = result[STORAGE_KEY]
+      const defaultV2: LocalRateV2 = {
+        remaining: FREE_TIER_CREDITS,
+        lastResetAt: new Date().toISOString()
       }
-
-      // Reset counter if it's a new day
-      if (data.lastResetDate !== today) {
+      if (!data) data = defaultV2
+      if (typeof data.remaining !== "number") {
+        const used = Math.max(0, (data as LocalRateV1).generationCount || 0)
         data = {
-          generationCount: 0,
-          lastResetDate: today
-        }
+          remaining: Math.max(0, FREE_TIER_CREDITS - used),
+          lastResetAt: new Date().toISOString()
+        } as LocalRateV2
+      }
+      // Reset if expired
+      if (
+        isExpiredSince((data as LocalRateV2).lastResetAt, RESET_WINDOW_HOURS)
+      ) {
+        data = defaultV2
       }
 
-      const remaining = Math.max(
-        0,
-        FREE_TIER_DAILY_LIMIT - data.generationCount
-      )
-      const canGenerate = remaining > 0
-
+      const canGenerate = (data as LocalRateV2).remaining > 0
       if (canGenerate) {
-        // Increment immediately
-        data.generationCount += 1
-        console.log(
-          `⬆️ [checkAndIncrementIfAllowed] Local incremented to ${data.generationCount}`
+        ;(data as LocalRateV2).remaining = Math.max(
+          0,
+          (data as LocalRateV2).remaining - 1
         )
-
+        ;(data as LocalRateV2).lastResetAt = new Date().toISOString()
         chrome.storage.local.set({ [STORAGE_KEY]: data }, () => {
           console.log(
-            `✅ [checkAndIncrementIfAllowed] Local saved count: ${data.generationCount}`
+            `✅ [checkAndIncrementIfAllowed] Local decremented, remaining ${(data as LocalRateV2).remaining}`
           )
           resolve({
             canGenerate: true,
             message: null,
-            newCount: data.generationCount
+            newCount: (data as LocalRateV2).remaining
           })
         })
       } else {
-        // Don't increment, just report limited
-        const resetDate = new Date(today)
-        resetDate.setUTCDate(resetDate.getUTCDate() + 1)
-
         resolve({
           canGenerate: false,
-          message: `⛔ You've reached your daily limit of 3 auto-generates.`,
-          newCount: data.generationCount
+          message: `⛔ You've reached your limit. Credits renew in 12 hours.`,
+          newCount: (data as LocalRateV2).remaining
         })
       }
     })
@@ -723,20 +738,24 @@ export async function getRateLimitStats(): Promise<{
   }>((resolve) => {
     const today = new Date().toISOString().split("T")[0]
     chrome.storage.local.get(STORAGE_KEY, (result) => {
-      const data: RateLimitData = result[STORAGE_KEY] || {
-        generationCount: 0,
-        lastResetDate: today
+      const data: any = result[STORAGE_KEY] || {
+        remaining: FREE_TIER_CREDITS,
+        lastResetAt: new Date().toISOString()
       }
+      const remaining =
+        typeof data.remaining === "number"
+          ? data.remaining
+          : Math.max(0, FREE_TIER_CREDITS - (data.generationCount || 0))
 
       resolve({
-        generationCount: data.generationCount,
-        dailyLimit: FREE_TIER_DAILY_LIMIT + (data.bonusUses || 0),
+        generationCount: Math.max(0, FREE_TIER_CREDITS - remaining),
+        dailyLimit: FREE_TIER_CREDITS + (data.bonusUses || 0),
         percentageUsed: Math.round(
-          (data.generationCount /
-            (FREE_TIER_DAILY_LIMIT + (data.bonusUses || 0))) *
+          (Math.max(0, FREE_TIER_CREDITS - remaining) /
+            (FREE_TIER_CREDITS + (data.bonusUses || 0))) *
             100
         ),
-        lastReset: data.lastResetDate
+        lastReset: (data.lastResetAt as string) || today
       })
     })
   })
@@ -792,7 +811,7 @@ export async function grantLoginBonus(userId?: string): Promise<void> {
       if (!selectError && existingData) {
         // Check if user was limited before logging in
         if (
-          existingData.generation_count >= FREE_TIER_DAILY_LIMIT &&
+          existingData.generation_count <= 0 &&
           (!existingData.bonus_uses || existingData.bonus_uses === 0)
         ) {
           console.log(
@@ -833,7 +852,7 @@ export async function grantLoginBonus(userId?: string): Promise<void> {
       // Check if user was limited before logging in (3 uses already made today)
       if (
         data.lastResetDate === today &&
-        data.generationCount >= FREE_TIER_DAILY_LIMIT &&
+        data.generationCount >= FREE_TIER_CREDITS &&
         !data.bonusUses
       ) {
         console.log(

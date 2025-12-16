@@ -1,7 +1,6 @@
 // Helper utility for handling rate limit messages and user interactions
 import { getUser } from "./authService"
 import {
-  clearLocalRateLimit,
   getRateLimitStatus,
   incrementGenerationCount
 } from "./rateLimitService"
@@ -45,10 +44,10 @@ export async function canGenerateData(): Promise<{
       }
     }
 
-    // User is logged in - clear local storage to prevent cross-account limit bleed
-    await clearLocalRateLimit()
-
-    // Check database (per-account limit)
+    // User is logged in - check database (per-account limit)
+    // NOTE: We do NOT clear local cache here because:
+    // 1. It's already cleared in login() when user logs in
+    // 2. Clearing it on every check would reset the logged-in user's limit
     const rateLimitStatus = await getRateLimitStatus(user.id)
 
     if (rateLimitStatus.paymentStatus === "PAID") {
