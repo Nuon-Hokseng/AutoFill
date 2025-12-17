@@ -21,6 +21,7 @@ interface RateLimitData {
 }
 
 const STORAGE_KEY = "rateLimitData"
+const STORAGE_BACKUP_KEY = "rateLimitDataBackup"
 const FREE_TIER_CREDITS = 3 // Remaining credits model (count down from 3)
 const RESET_WINDOW_HOURS = 12 // Renew credits every 12 hours
 const LOGIN_BONUS_USES = 3 // Bonus uses when logging in after hitting limit (only if you keep bonus logic)
@@ -34,6 +35,35 @@ type LocalRateV1 = {
 type LocalRateV2 = {
   remaining: number
   lastResetAt: string // ISO timestamp
+}
+
+// Archive device-local rate limit so we can restore it after a user logs out
+export async function archiveLocalRateLimit(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    chrome.storage.local.get(STORAGE_KEY, (result) => {
+      const data = result[STORAGE_KEY]
+      if (!data) {
+        resolve()
+        return
+      }
+      chrome.storage.local.set({ [STORAGE_BACKUP_KEY]: data }, () => resolve())
+    })
+  })
+}
+
+export async function restoreArchivedLocalRateLimit(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    chrome.storage.local.get(STORAGE_BACKUP_KEY, (result) => {
+      const data = result[STORAGE_BACKUP_KEY]
+      if (!data) {
+        resolve()
+        return
+      }
+      chrome.storage.local.set({ [STORAGE_KEY]: data }, () => {
+        chrome.storage.local.remove(STORAGE_BACKUP_KEY, () => resolve())
+      })
+    })
+  })
 }
 
 function nowUtc(): Date {
@@ -99,8 +129,26 @@ export async function getRateLimitStatus(userId?: string): Promise<{
   if (effectiveUserId && effectiveUserId !== "device-local") {
     console.log(`🔐 [getRateLimitStatus] User detected: ${effectiveUserId}`)
 
-    // Check payment status first
+    // Fast-path: trust cached payment when available
+    const cachedPayment = await getCachedPaymentStatus()
+    if (cachedPayment === "PAID") {
+      console.log(
+        "💳 [getRateLimitStatus] Cached payment=PAID, skipping rate limit fetch"
+      )
+      return {
+        remaining: Infinity,
+        isLimited: false,
+        resetTime: null,
+        paymentStatus: "PAID"
+      }
+    }
+
+    // Check payment status from DB
+    console.log(`🔍 [getRateLimitStatus] Checking payment status...`)
     const paymentStatus = await checkPaymentStatus(effectiveUserId)
+    console.log(
+      `💳 [getRateLimitStatus] Payment status returned: ${paymentStatus}`
+    )
 
     // If user is paid, no rate limiting
     if (paymentStatus === "PAID") {
@@ -287,6 +335,34 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
       ? supabaseAdmin
       : supabase
 
+  // Pro users bypass counting entirely
+  if (effectiveUserId && effectiveUserId !== "device-local") {
+    console.log(
+      `🔍 [incrementGenerationCount] Checking payment status for user: ${effectiveUserId}`
+    )
+    try {
+      const cachedPayment = await getCachedPaymentStatus()
+      if (cachedPayment === "PAID") {
+        console.log(
+          "✅ [incrementGenerationCount] PRO USER DETECTED - SKIP DECREMENT"
+        )
+        return
+      }
+      const payment = await checkPaymentStatus(effectiveUserId)
+      console.log(
+        `💳 [incrementGenerationCount] Payment status returned: ${payment}`
+      )
+      if (payment === "PAID") {
+        console.log(
+          "✅ [incrementGenerationCount] PRO USER DETECTED - SKIP DECREMENT"
+        )
+        return
+      }
+    } catch (e) {
+      console.warn("⚠️ [incrementGenerationCount] Payment check failed:", e)
+    }
+  }
+
   // If we have a real user ID (not device-local), update database
   if (effectiveUserId && effectiveUserId !== "device-local") {
     try {
@@ -465,6 +541,46 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
       ? supabaseAdmin
       : supabase
 
+  // Pro users bypass rate limiting entirely
+  if (effectiveUserId && effectiveUserId !== "device-local") {
+    // Trust cached payment first to avoid hitting DB for pros
+    const cachedPayment = await getCachedPaymentStatus()
+    if (cachedPayment === "PAID") {
+      console.log(
+        `💳 [checkAndIncrementIfAllowed] Cached payment=PAID, bypassing limits`
+      )
+      return { canGenerate: true, message: null, newCount: Infinity as number }
+    }
+
+    console.log(
+      `🔍 [checkAndIncrementIfAllowed] Checking payment status for user: ${effectiveUserId}`
+    )
+    try {
+      const payment = await checkPaymentStatus(effectiveUserId)
+      console.log(
+        `💳 [checkAndIncrementIfAllowed] Payment status returned: ${payment}`
+      )
+      if (payment === "PAID") {
+        console.log(
+          `✅ [checkAndIncrementIfAllowed] PRO USER DETECTED - BYPASSING RATE LIMIT`
+        )
+        return {
+          canGenerate: true,
+          message: null,
+          newCount: Infinity as number
+        }
+      }
+      console.log(
+        `⚠️ [checkAndIncrementIfAllowed] Payment status is NOT "PAID", continuing with normal flow`
+      )
+    } catch (e) {
+      console.error(
+        "❌ [checkAndIncrementIfAllowed] Payment check EXCEPTION:",
+        e
+      )
+    }
+  }
+
   // If we have a real user ID (not device-local), use database
   if (effectiveUserId && effectiveUserId !== "device-local") {
     try {
@@ -559,45 +675,12 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
 
         if (!updateData || updateData.length === 0) {
           console.warn(
-            "⚠️ [checkAndIncrementIfAllowed] Update returned no rows! Possible RLS policy issue."
+            "⚠️ [checkAndIncrementIfAllowed] Update returned no rows (likely RLS). Allowing generation to proceed."
           )
-          console.log(
-            `🔍 [checkAndIncrementIfAllowed] Attempting direct update verification...`
-          )
-
-          // Verify the update actually happened
-          const { data: verifyData } = await dbClient
-            .from("rate_limit_usage")
-            .select("generation_count")
-            .eq("user_id", effectiveUserId)
-            .single()
-
-          console.log(
-            `✔️ [checkAndIncrementIfAllowed] Database verification:`,
-            verifyData
-          )
-
-          if (verifyData?.generation_count === newRemaining) {
-            console.log(
-              `✅ [checkAndIncrementIfAllowed] Update verified! New remaining: ${newRemaining}`
-            )
-            return {
-              canGenerate: true,
-              message: null,
-              newCount: newRemaining
-            }
-          } else {
-            console.error(
-              `❌ [checkAndIncrementIfAllowed] Verification failed! Database still shows: ${verifyData?.generation_count}, expected: ${newRemaining}`
-            )
-            console.error(
-              `❌ RLS policies are likely NOT applied correctly. Check Supabase RLS settings.`
-            )
-            return {
-              canGenerate: false,
-              message: "Rate limit update failed (RLS policy issue)",
-              newCount: remaining
-            }
+          return {
+            canGenerate: true,
+            message: null,
+            newCount: newRemaining
           }
         }
 
@@ -709,13 +792,28 @@ export async function checkPaymentStatus(
       return "NOT_FOUND"
     }
 
-    const { data, error } = await supabase
+    console.log(
+      `💳 [checkPaymentStatus] Querying payments for user: ${effectiveUserId}`
+    )
+
+    // Use admin client if available to bypass RLS, otherwise use regular client
+    const client = supabaseAdmin || supabase
+    console.log(
+      `💳 [checkPaymentStatus] Using ${supabaseAdmin ? "ADMIN" : "regular"} client`
+    )
+
+    const { data, error } = await client
       .from("payments")
       .select("payway_status, expires_at, created_at")
       .eq("user_id", effectiveUserId)
       .order("created_at", { ascending: false })
       .limit(1)
       .single()
+
+    console.log(
+      `💳 [checkPaymentStatus] Query result - Error: ${error ? error.message : "none"}, Data:`,
+      data
+    )
 
     if (error) {
       if (error.code === "PGRST116") {
@@ -870,8 +968,32 @@ export async function getRateLimitStats(): Promise<{
     console.log("ℹ️ [getRateLimitStats] No logged-in user")
   }
 
-  // If user is logged in, fetch from database
+  // If user is logged in, check payment status first
   if (currentUser?.id) {
+    console.log(
+      `🔍 [getRateLimitStats] Checking payment for user: ${currentUser.id}`
+    )
+    try {
+      const paymentStatus = await checkPaymentStatus(currentUser.id)
+      console.log(`💳 [getRateLimitStats] Payment status: ${paymentStatus}`)
+
+      // Pro users have unlimited stats
+      if (paymentStatus === "PAID") {
+        console.log(
+          `✅ [getRateLimitStats] PRO USER - returning unlimited stats`
+        )
+        return {
+          generationCount: 0,
+          dailyLimit: Infinity,
+          percentageUsed: 0,
+          lastReset: today
+        }
+      }
+    } catch (paymentError) {
+      console.warn("⚠️ [getRateLimitStats] Payment check failed:", paymentError)
+    }
+
+    // If not paid, fetch rate limit from database
     try {
       const { data, error } = await supabase
         .from("rate_limit_usage")
@@ -955,6 +1077,21 @@ export async function clearLocalRateLimit(): Promise<void> {
 export async function syncRateLimitFromDatabase(userId: string): Promise<void> {
   try {
     console.log(`🔄 [syncRateLimitFromDatabase] Syncing for user: ${userId}`)
+    const cachedPayment = await getCachedPaymentStatus()
+    if (cachedPayment === "PAID") {
+      console.log(
+        "💳 [syncRateLimitFromDatabase] Cached payment=PAID, skipping sync"
+      )
+      return
+    }
+
+    const livePayment = await checkPaymentStatus(userId)
+    if (livePayment === "PAID") {
+      console.log(
+        "💳 [syncRateLimitFromDatabase] Live payment=PAID, skipping sync"
+      )
+      return
+    }
     const today = new Date().toISOString().split("T")[0]
 
     // Get the latest record for the user from database

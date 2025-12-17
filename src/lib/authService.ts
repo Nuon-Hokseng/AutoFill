@@ -1,6 +1,8 @@
 // authService.ts
 import {
+  archiveLocalRateLimit,
   clearLocalRateLimit,
+  restoreArchivedLocalRateLimit,
   syncRateLimitFromDatabase
 } from "./rateLimitService"
 import { supabase } from "./supabaseClient"
@@ -49,9 +51,12 @@ export async function login(email: string, password: string) {
 
   if (error) throw error
 
-  // Clear local rate limit cache when user logs in
+  // Preserve guest rate limit, then clear device cache while logged in
+  await archiveLocalRateLimit()
   await clearLocalRateLimit()
-  console.log("✅ [authService.login] Rate limit cache cleared after login")
+  console.log(
+    "✅ [authService.login] Rate limit cache archived and cleared after login"
+  )
 
   // Sync rate limit from database to ensure consistency across devices
   if (data?.user?.id) {
@@ -67,6 +72,9 @@ export async function login(email: string, password: string) {
 export async function logout() {
   // Clear all local data before signing out
   await clearLocalData()
+
+  // Restore previous guest rate limit so limits persist across sign-out
+  await restoreArchivedLocalRateLimit()
 
   // NOTE: We do NOT clear rate limit cache on logout
   // This prevents users from bypassing local limits by logging out

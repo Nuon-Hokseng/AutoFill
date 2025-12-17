@@ -68,18 +68,18 @@ export function RateLimitStatus() {
     return null
   }
 
-  // If user is paid, don't show rate limit
-  if (stats.paymentStatus === "PAID") {
+  // If user is paid or we detect infinite limit, show premium card
+  if (stats.paymentStatus === "PAID" || !isFinite(stats.dailyLimit)) {
     return (
       <Card className="bg-green-50 border-green-200">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-green-900 flex items-center gap-2">
-            <span className="text-lg">✅</span> Premium Member
+            <span className="text-lg">✅</span> Premium Access
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-xs text-green-800">
-            Unlimited auto-generate data access
+            Unlimited auto-generate access
           </p>
         </CardContent>
       </Card>
