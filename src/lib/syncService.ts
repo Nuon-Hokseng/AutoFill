@@ -53,9 +53,6 @@ interface SyncResult {
   syncedAt?: number
 }
 
-/**
- * Get encryption password for current user
- */
 async function getEncryptionPassword(): Promise<string | null> {
   try {
     let storageData = await chrome.storage.local.get(["user_id", "auth_token"])
@@ -67,7 +64,6 @@ async function getEncryptionPassword(): Promise<string | null> {
       tokenLength: storageData.auth_token?.length || 0
     })
 
-    // If tokens are missing, try to get them from current session
     if (!storageData.user_id || !storageData.auth_token) {
       console.log("⚠️ Tokens missing, fetching from current session...")
 
@@ -96,8 +92,6 @@ async function getEncryptionPassword(): Promise<string | null> {
       }
     }
 
-    // Use only user_id for consistent encryption key across sessions
-    // auth_token changes on each login, which would make old data undecryptable
     return await generateEncryptionPassword(
       storageData.user_id,
       storageData.user_id
@@ -108,9 +102,6 @@ async function getEncryptionPassword(): Promise<string | null> {
   }
 }
 
-/**
- * Sync custom field data from local storage to Supabase (ALL ENCRYPTED)
- */
 export async function syncProfileToSupabase(): Promise<SyncResult> {
   try {
     console.log("🔄 Checking authentication...")
@@ -144,13 +135,10 @@ export async function syncProfileToSupabase(): Promise<SyncResult> {
 
     console.log("🔐 Encrypting all data as single JSONB...")
 
-    // Encrypt entire data object as JSONB (ONE row per user)
-    // Note: encrypt() function handles JSON.stringify internally
     const encryptedData = await encrypt(localData, encryptionPassword)
 
     console.log("💾 Upserting single row to custom_fields...")
 
-    // Upsert single row (ONE row per user)
     const { data: upsertResult, error: upsertError } = await supabase
       .from("custom_fields")
       .upsert(
@@ -190,9 +178,6 @@ export async function syncProfileToSupabase(): Promise<SyncResult> {
   }
 }
 
-/**
- * Sync custom field data from Supabase to local storage (DECRYPT ALL)
- */
 export async function syncProfileFromSupabase(): Promise<SyncResult> {
   try {
     const {
@@ -269,9 +254,6 @@ export async function syncProfileFromSupabase(): Promise<SyncResult> {
   }
 }
 
-/**
- * Sync website profiles to Supabase
- */
 export async function syncWebsiteProfilesToSupabase(): Promise<SyncResult> {
   try {
     const {
@@ -295,16 +277,13 @@ export async function syncWebsiteProfilesToSupabase(): Promise<SyncResult> {
       return { success: false, error: "Failed to generate encryption password" }
     }
 
-    // Upload each profile
     for (const profile of localProfiles) {
-      // Generate UUID if profile.id is not a valid UUID (e.g., old timestamp-based IDs)
       const isValidUUID =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
           profile.id
         )
       const profileId = isValidUUID ? profile.id : crypto.randomUUID()
 
-      // Encrypt the filled_fields data
       const encryptedData = await encrypt(profile.data, encryptionPassword)
 
       const { error } = await supabase.from("website_profiles").upsert(
@@ -342,9 +321,6 @@ export async function syncWebsiteProfilesToSupabase(): Promise<SyncResult> {
   }
 }
 
-/**
- * Sync website profiles from Supabase
- */
 export async function syncWebsiteProfilesFromSupabase(): Promise<SyncResult> {
   try {
     const {
@@ -354,13 +330,11 @@ export async function syncWebsiteProfilesFromSupabase(): Promise<SyncResult> {
       return { success: false, error: "User not authenticated" }
     }
 
-    // Get encryption password
     const encryptionPassword = await getEncryptionPassword()
     if (!encryptionPassword) {
       return { success: false, error: "Failed to generate encryption password" }
     }
 
-    // Fetch website profiles
     const { data: profiles, error } = await supabase
       .from("website_profiles")
       .select("*")
@@ -461,32 +435,24 @@ export async function fullSync(): Promise<SyncResult> {
   }
 }
 
-/**
- * Mark sync as pending (to be done on next opportunity)
- */
+
 export async function markSyncPending(): Promise<void> {
   await chrome.storage.local.set({ sync_pending: true })
 }
 
-/**
- * Check if sync is pending
- */
+
 export async function isSyncPending(): Promise<boolean> {
   const result = await chrome.storage.local.get("sync_pending")
   return result.sync_pending === true
 }
 
-/**
- * Get last sync timestamp
- */
+
 export async function getLastSyncTime(): Promise<number | null> {
   const result = await chrome.storage.local.get("last_sync_timestamp")
   return result.last_sync_timestamp || null
 }
 
-/**
- * Clear all user data from local storage (called on logout)
- */
+
 export async function clearLocalData(): Promise<void> {
   try {
     await chrome.storage.local.remove([

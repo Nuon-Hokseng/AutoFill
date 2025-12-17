@@ -186,8 +186,10 @@ function detectCredentialFields() {
 // Fallback: count visible inputs when heuristic detection fails
 function countVisibleInputs(): number {
   try {
-    const all = document.querySelectorAll<HTMLInputElement>(
-      'input:not([type="hidden"]), textarea'
+    const all = Array.from(
+      document.querySelectorAll<HTMLInputElement>(
+        'input:not([type="hidden"]), textarea'
+      )
     )
     let count = 0
     for (const el of all) {

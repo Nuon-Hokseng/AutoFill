@@ -45,14 +45,13 @@ export const FillButton = ({
             })
         }
 
-        // Reset status after 3 seconds
+
         setTimeout(() => {
           setStatus("idle")
           setDataSource(null)
           if (onStatusChange) onStatusChange("idle")
         }, 3000)
       } else {
-        // Determine error type based on response
         const isAiDisabled = response?.aiEnabled === false
         const isRateLimited = response?.rateLimited === true
         setStatus(isAiDisabled ? "nodata" : "error")
@@ -61,7 +60,6 @@ export const FillButton = ({
         if (onStatusChange) onStatusChange("error")
         if (onResult) onResult({ filled: 0, total: 0 })
 
-        // Reset status after 5 seconds (longer for error messages)
         setTimeout(() => {
           setStatus("idle")
           setErrorMessage(null)

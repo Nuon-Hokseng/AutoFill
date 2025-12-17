@@ -7,7 +7,7 @@ export function matchesAny(str: string | null, keywords: string[]): boolean {
 export function getAssociatedLabelText(
   input: HTMLInputElement | HTMLSelectElement
 ): string {
-  // 1. Direct <label for="id"> association
+
   if (input.id) {
     const label = document.querySelector(`label[for="${input.id}"]`)
     if (label) {
@@ -16,14 +16,13 @@ export function getAssociatedLabelText(
     }
   }
 
-  // 2. Parent wrapping label <label><input/></label>
+
   const parentLabel = input.closest("label")
   if (parentLabel) {
     const text = (parentLabel.textContent || "").trim()
     return text
   }
 
-  // 3. aria-labelledby (can reference multiple ids)
   const ariaLabelledBy = input.getAttribute("aria-labelledby")
   if (ariaLabelledBy) {
     const texts: string[] = []

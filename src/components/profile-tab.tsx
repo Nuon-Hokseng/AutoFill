@@ -8,7 +8,6 @@ import {
   EyeOff,
   Globe,
   Play,
-  RefreshCw,
   Trash2,
   X
 } from "lucide-react"
@@ -135,7 +134,6 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
         setSelectedProfile(null)
       }
 
-      // Also delete from Supabase if authenticated
       try {
         const {
           data: { user }
@@ -194,7 +192,6 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
       setSelectedProfile(null)
       setShowClearConfirm(false)
 
-      // Also delete all from Supabase if authenticated
       try {
         const {
           data: { user }

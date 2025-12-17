@@ -158,8 +158,6 @@ export function detectFields(
       if (field === "username" && (type === "text" || type === "search"))
         scores[field] += 1
 
-      // IMPORTANT: Prevent firstname/lastname from matching username-like fields
-      // If idName or placeholder contains "user" or "login", boost username and penalize firstname/lastname
       const hasUsernameIndicators =
         idName.includes("user") ||
         idName.includes("login") ||
@@ -170,13 +168,12 @@ export function detectFields(
 
       if (hasUsernameIndicators) {
         if (field === "username") {
-          scores[field] += 5 // Boost username score
+          scores[field] += 5 
         } else if (field === "firstname" || field === "lastname") {
-          scores[field] = Math.max(0, scores[field] - 8) // Strong penalty for firstname/lastname
+          scores[field] = Math.max(0, scores[field] - 8) 
         }
       }
 
-      // If field explicitly has "firstname" or "lastname" in identifiers, strongly boost those fields
       const hasFirstnameIndicators =
         idName.includes("firstname") ||
         idName.includes("first-name") ||
@@ -210,15 +207,14 @@ export function detectFields(
         scores[field] += 12 // Strong boost for fullname
       }
 
-      // Prevent fullname from taking firstname/lastname fields (very aggressive penalties)
+
       if (hasFirstnameIndicators && field === "fullname") {
-        scores[field] = Math.max(0, scores[field] - 20) // Kill fullname score completely
+        scores[field] = Math.max(0, scores[field] - 20) 
       }
       if (hasLastnameIndicators && field === "fullname") {
-        scores[field] = Math.max(0, scores[field] - 20) // Kill fullname score completely
+        scores[field] = Math.max(0, scores[field] - 20) 
       }
 
-      // Prevent firstname/lastname from taking fullname fields
       if (hasFullnameIndicators && field === "firstname") {
         scores[field] = Math.max(0, scores[field] - 15)
       }
