@@ -166,7 +166,7 @@ export async function fetchAutofillData(): Promise<AutofillData | null> {
     clearTimeout(timeout)
 
     if (!res.ok) {
-      console.error("Backend responded with non-OK status:", res.status)
+      console.warn("Backend responded with non-OK status:", res.status)
       return null
     }
 
@@ -191,9 +191,9 @@ export async function fetchAutofillData(): Promise<AutofillData | null> {
     return normalized || null
   } catch (err: any) {
     if (err?.name === "AbortError") {
-      console.error("Backend request timed out")
+      console.warn("Backend request timed out")
     } else {
-      console.error("Failed to fetch autofill data:", err?.message || err)
+      console.warn("Failed to fetch autofill data:", err?.message || err)
     }
     return null
   }
@@ -219,14 +219,12 @@ export async function generateDummyData(
     }
   }
 
-  console.error("❌ All backend fetch attempts failed")
+  console.warn("⚠️ All backend fetch attempts failed; will use backup data")
   return null
 }
 
 // Track if we're using backup data
 let usingBackupData = false
-
-// Simple cache system with single entry and 1 hour auto-refresh
 let cachedData: DummyUserData | null = null
 let cacheTimestamp: number = 0
 const CACHE_REFRESH_DURATION = 30 * 60 * 1000
@@ -237,7 +235,6 @@ let isGenerating = false
 function getBackupData(): AutofillData {
   const randomIndex = Math.floor(Math.random() * BACKUP_DUMMY_POOL.length)
   const backup = { ...BACKUP_DUMMY_POOL[randomIndex] }
-  // Generate fresh random password each time
   backup.password = generateRandomPassword()
   console.log("🎲 Using backup dummy data (random profile)")
   return backup
@@ -296,10 +293,29 @@ async function initializeCache(attemptNumber: number = 1): Promise<void> {
       // Schedule auto-refresh after 1 hour
       scheduleCacheRefresh()
     } else {
-      console.error(`❌ Failed to generate AI data on attempt ${attemptNumber}`)
-
-      // Keep using backup data if generation fails
       if (attemptNumber >= maxAttempts) {
+        if (!cachedData) {
+          const backupData = getBackupData()
+          cachedData = backupData
+          cacheTimestamp = Date.now()
+          usingBackupData = true
+
+          chrome.storage.local.set(
+            {
+              generatedData: backupData,
+              generatedDataTimestamp: cacheTimestamp,
+              usingBackup: true
+            },
+            () => {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "Error saving backup data to storage:",
+                  chrome.runtime.lastError
+                )
+              }
+            }
+          )
+        }
         console.warn(
           "⚠️ All AI generation attempts failed, continuing with backup data"
         )

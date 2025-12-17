@@ -85,7 +85,19 @@ export async function logout() {
 }
 
 export async function getUser() {
-  const { data, error } = await supabase.auth.getUser()
-  if (error) throw error
-  return data.user
+  try {
+    const {
+      data: { session },
+      error
+    } = await supabase.auth.getSession()
+
+    // Supabase throws AuthSessionMissingError when no session exists; treat as logged-out
+    if (error?.message?.includes("Auth session missing")) return null
+    if (error) throw error
+
+    return session?.user ?? null
+  } catch (error: any) {
+    if (error?.message?.includes("Auth session missing")) return null
+    throw error
+  }
 }
