@@ -14,6 +14,7 @@ import CustomTab from "~components/custom-tab"
 import { FillButton } from "~components/fill-button"
 import ProfileTab from "~components/profile-tab"
 import RateLimitStatus from "~components/rate-limit-status"
+import { getPaymentDetails } from "~lib/rateLimitService"
 import { supabase } from "~lib/supabaseClient"
 import { syncWebsiteProfilesToSupabase } from "~lib/syncService"
 
@@ -33,6 +34,12 @@ interface SaveProfileRequest {
   totalCount: number
 }
 
+interface PaymentInfo {
+  status: "PAID" | "PENDING" | "EXPIRED" | "NOT_FOUND" | "ERROR"
+  expiresAt: string | null
+  daysRemaining: number | null
+}
+
 export default function IndexPopup() {
   const [currentView, setCurrentView] = useState<View>("main")
   const [filledCount, setFilledCount] = useState<number | null>(null)
@@ -43,13 +50,30 @@ export default function IndexPopup() {
   const [cacheStatus, setCacheStatus] = useState<string | null>(null)
   const [saveProfileRequest, setSaveProfileRequest] =
     useState<SaveProfileRequest | null>(null)
+  const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null)
+  const [loadingPayment, setLoadingPayment] = useState(false)
 
   useEffect(() => {
     chrome.storage.local.get("aiModeEnabled", (res) => {
       setAiModeEnabled(res.aiModeEnabled !== false)
     })
     // Gemini API key logic removed (no UI usage)
+
+    // Load payment info
+    loadPaymentInfo()
   }, [])
+
+  const loadPaymentInfo = async () => {
+    setLoadingPayment(true)
+    try {
+      const details = await getPaymentDetails()
+      setPaymentInfo(details)
+    } catch (error) {
+      console.error("Error loading payment info:", error)
+    } finally {
+      setLoadingPayment(false)
+    }
+  }
 
   const toggleAIMode = () => {
     const newValue = !aiModeEnabled
@@ -137,20 +161,20 @@ export default function IndexPopup() {
   )
 
   return (
-    <div className="w-80 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
+    <div className="w-full min-w-[320px] max-w-[480px] sm:w-96 md:w-[420px] bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
       {currentView === "main" && (
-        <div className="p-4 space-y-4">
+        <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
           {saveProfileRequest && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-4 shadow-lg animate-in slide-in-from-top">
-              <div className="flex items-start gap-3 mb-3">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-3 sm:p-4 shadow-lg animate-in slide-in-from-top">
+              <div className="flex items-start gap-2 sm:gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 shadow-md">
                   <FileText className="w-5 h-5 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-bold text-gray-900 mb-1">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-1">
                     Save Profile?
                   </h3>
-                  <p className="text-sm text-gray-700 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
                     Successfully filled{" "}
                     <span className="font-semibold text-blue-700">
                       {saveProfileRequest.filledCount} field
@@ -170,12 +194,12 @@ export default function IndexPopup() {
               <div className="flex gap-2">
                 <button
                   onClick={handleDismissProfile}
-                  className="flex-1 px-4 py-2 bg-white text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all border border-gray-300 shadow-sm">
+                  className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-white text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all border border-gray-300 shadow-sm">
                   Not Now
                 </button>
                 <button
                   onClick={handleSaveProfile}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg">
+                  className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg">
                   Save
                 </button>
               </div>
@@ -187,9 +211,11 @@ export default function IndexPopup() {
               <IconBox>
                 <Wand2 size={18} className="text-white" />
               </IconBox>
-              <h2 className="text-lg font-semibold text-gray-800">FormGenie</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-800">
+                FormGenie
+              </h2>
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed">
+            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
               Click the button to auto-fill your credentials into focused fields
             </p>
           </div>
@@ -356,10 +382,109 @@ export default function IndexPopup() {
                 <Globe className="w-4 h-4" />
                 Manage Websites
               </button>
-              <button className="justify-center w-full text-sm py-2 border border-gray-200 rounded flex items-center gap-2">
-                <CreditCard className="w-4 h-4" />
-                Payment Info
-              </button>
+
+              {/* Payment Info Section */}
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <CreditCard className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-sm font-semibold text-gray-800">
+                    Payment Info
+                  </h3>
+                </div>
+
+                {loadingPayment ? (
+                  <div className="text-xs text-gray-600">Loading...</div>
+                ) : paymentInfo ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-600">Status:</span>
+                      <span
+                        className={`text-xs font-semibold px-2 py-1 rounded ${
+                          paymentInfo.status === "PAID"
+                            ? "bg-green-100 text-green-700"
+                            : paymentInfo.status === "PENDING"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : paymentInfo.status === "EXPIRED"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-gray-100 text-gray-700"
+                        }`}>
+                        {paymentInfo.status === "PAID"
+                          ? "✓ Active"
+                          : paymentInfo.status === "PENDING"
+                            ? "⏳ Pending"
+                            : paymentInfo.status === "EXPIRED"
+                              ? "✗ Expired"
+                              : "No Subscription"}
+                      </span>
+                    </div>
+
+                    {paymentInfo.expiresAt && paymentInfo.status === "PAID" && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-600">
+                            Expires:
+                          </span>
+                          <span className="text-xs font-medium text-gray-800">
+                            {new Date(
+                              paymentInfo.expiresAt
+                            ).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        {paymentInfo.daysRemaining !== null && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600">
+                              Days Left:
+                            </span>
+                            <span
+                              className={`text-xs font-semibold ${
+                                paymentInfo.daysRemaining > 7
+                                  ? "text-green-600"
+                                  : paymentInfo.daysRemaining > 3
+                                    ? "text-yellow-600"
+                                    : "text-red-600"
+                              }`}>
+                              {paymentInfo.daysRemaining} day
+                              {paymentInfo.daysRemaining !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {paymentInfo.expiresAt &&
+                      paymentInfo.status === "EXPIRED" && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-600">
+                            Expired on:
+                          </span>
+                          <span className="text-xs font-medium text-red-600">
+                            {new Date(
+                              paymentInfo.expiresAt
+                            ).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
+
+                    {paymentInfo.status === "NOT_FOUND" && (
+                      <p className="text-xs text-gray-500 italic">
+                        No active subscription. Upgrade to Premium for unlimited
+                        access!
+                      </p>
+                    )}
+
+                    <button
+                      onClick={loadPaymentInfo}
+                      className="w-full mt-2 text-xs py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                      Refresh Status
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">
+                    Unable to load payment info
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

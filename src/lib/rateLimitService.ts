@@ -927,6 +927,72 @@ export async function getCachedPaymentStatus(): Promise<
 }
 
 /**
+ * Get detailed payment information including expiration date
+ */
+export async function getPaymentDetails(userId?: string): Promise<{
+  status: "PAID" | "PENDING" | "EXPIRED" | "NOT_FOUND" | "ERROR"
+  expiresAt: string | null
+  daysRemaining: number | null
+}> {
+  try {
+    let effectiveUserId = userId
+    if (!effectiveUserId) {
+      try {
+        const currentUser = await getUser()
+        if (!currentUser) {
+          return { status: "NOT_FOUND", expiresAt: null, daysRemaining: null }
+        }
+        effectiveUserId = currentUser.id
+      } catch (error) {
+        return { status: "NOT_FOUND", expiresAt: null, daysRemaining: null }
+      }
+    }
+
+    if (!effectiveUserId) {
+      return { status: "NOT_FOUND", expiresAt: null, daysRemaining: null }
+    }
+
+    const client = supabaseAdmin || supabase
+    const { data, error } = await client
+      .from("payments")
+      .select("payway_status, expires_at, created_at")
+      .eq("user_id", effectiveUserId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+
+    if (error || !data) {
+      return { status: "NOT_FOUND", expiresAt: null, daysRemaining: null }
+    }
+
+    const { payway_status, expires_at } = data
+    let daysRemaining: number | null = null
+
+    if (expires_at) {
+      const expiryDate = new Date(expires_at)
+      const now = new Date()
+      const diffMs = expiryDate.getTime() - now.getTime()
+      daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+
+      if (now > expiryDate) {
+        return { status: "EXPIRED", expiresAt: expires_at, daysRemaining: 0 }
+      }
+    }
+
+    if (payway_status === "PAID") {
+      return { status: "PAID", expiresAt: expires_at, daysRemaining }
+    } else if (payway_status === "PENDING") {
+      return { status: "PENDING", expiresAt: expires_at, daysRemaining }
+    } else {
+      return { status: "EXPIRED", expiresAt: expires_at, daysRemaining: 0 }
+    }
+  } catch (error) {
+    console.error("❌ Error getting payment details:", error)
+    return { status: "ERROR", expiresAt: null, daysRemaining: null }
+  }
+}
+
+/**
  * Reset rate limit (for testing or admin purposes)
  */
 export async function resetRateLimit(): Promise<void> {
