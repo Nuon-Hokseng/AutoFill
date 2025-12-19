@@ -7,20 +7,16 @@ import {
 import { clearCache, hasCachedData, preloadData } from "~services/geminiService"
 import { getAIMode, getAutofillData } from "~services/storageService"
 
-console.log("Background script loaded")
-
 // Initialize preload immediately when background script loads
 initializePreload()
 
 // Preload dummy data on extension startup if AI mode is enabled
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("🔧 Extension installed/updated")
   initializePreload()
 })
 
 // Also preload on startup
 chrome.runtime.onStartup.addListener(() => {
-  console.log("🚀 Extension startup")
   initializePreload()
 })
 
@@ -30,40 +26,25 @@ async function initializePreload() {
   const hasCache = await hasCachedData()
 
   if (aiEnabled && !hasCache) {
-    console.log("🎯 AI mode enabled, preloading AI-generated data...")
     preloadData()
-  } else if (!aiEnabled) {
-    console.log("🚫 AI mode disabled, skipping preload")
-  } else {
-    console.log("📦 Data already cached")
   }
 }
 
 // Check cache status when popup opens but don't preload (will load on-demand)
 chrome.runtime.onConnect.addListener(async (port) => {
   if (port.name === "popup") {
-    const hasCache = await hasCachedData()
-    if (hasCache) {
-      console.log("📦 Popup opened - data already cached")
-    } else {
-      console.log("📭 Popup opened - data will be generated on first use")
-    }
+    // Silent check
   }
 })
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log("Background received message:", message)
-
   if (message.type === "CLEAR_AI_CACHE") {
     try {
       clearCache()
-      console.log("🗑️ Cache cleared, triggering preload...")
-      // Immediately preload fresh data after clearing
       preloadData()
       sendResponse({ success: true })
     } catch (e: any) {
-      console.error("Failed to clear AI cache:", e?.message || e)
       sendResponse({ success: false, error: e?.message || String(e) })
     }
     return true
@@ -83,7 +64,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               source: "profile"
             },
             (response) => {
-              console.log("Content script response:", response)
               sendResponse({
                 ...(response || { success: false }),
                 source: "profile"
@@ -105,9 +85,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // If AI mode is enabled but rate limit reached, block generation
         if (aiEnabled && !rateLimitStatus.canGenerate) {
-          console.warn(
-            `⛔ Rate limit reached for AI generation. Remaining: ${rateLimitStatus.remaining}`
-          )
           sendResponse({
             success: false,
             error: rateLimitStatus.message,
@@ -125,8 +102,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               const errorMsg = aiEnabled
                 ? "Failed to fetch dummy data from backend. Please try again."
                 : "No custom data found. Please add custom credentials or enable AI mode."
-
-              console.error("❌ No autofill data available:", errorMsg)
               sendResponse({
                 success: false,
                 error: errorMsg,
@@ -139,8 +114,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             // If data comes from AI generation, check and increment the rate limit counter
             if (source === "generated" && aiEnabled) {
               try {
-                console.log(`� Checking and incrementing generation count...`)
-
                 // Prefer stored user_id; if missing, function falls back to session/local
                 const storedUserId = await new Promise<string | undefined>(
                   (resolve) => {
@@ -169,20 +142,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   })
                   return
                 }
-
-                console.log(
-                  `✅ Generation count incremented to ${result.newCount}/20`
-                )
               } catch (err) {
-                console.error(
-                  "Error incrementing generation count:",
-                  err?.message || err
-                )
                 // Don't block the fill if counter increment fails
               }
             }
-
-            console.log(`📤 Sending ${source} data to content script`)
 
             // Send data to content script
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {

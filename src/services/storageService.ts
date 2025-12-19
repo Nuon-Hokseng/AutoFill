@@ -61,10 +61,8 @@ export async function setAIMode(
   return new Promise((resolve) => {
     chrome.storage.local.set({ aiModeEnabled: enabled }, () => {
       if (chrome.runtime.lastError) {
-        console.error("Error saving AI mode:", chrome.runtime.lastError)
         resolve({ success: false })
       } else {
-        console.log(`✅ AI mode ${enabled ? "enabled" : "disabled"}`)
         resolve({ success: true })
       }
     })
@@ -87,15 +85,10 @@ export async function getAutofillData(): Promise<{
 
       if (aiModeEnabled) {
         // AI-only mode: never use custom data
-        console.log("🤖 AI mode ON — using AI-generated data only")
         const generatedData = await getCachedOrGenerateData()
         if (generatedData) {
-          console.log("✅ Using Gemini-generated data")
           resolve({ data: generatedData, source: "generated" })
         } else {
-          console.warn(
-            "⚠️ Failed to generate AI data; no data will be filled in AI mode"
-          )
           resolve({ data: null, source: "none" })
         }
         return
@@ -107,10 +100,8 @@ export async function getAutofillData(): Promise<{
         Object.values(customData).some((value) => value && value.trim() !== "")
 
       if (hasCustomData) {
-        console.log("📝 AI mode OFF — using custom user data")
         resolve({ data: customData, source: "custom" })
       } else {
-        console.log("🚫 AI mode OFF and no custom data available")
         resolve({ data: null, source: "none" })
       }
     })
@@ -129,7 +120,6 @@ export async function saveCustomData(
         console.error("Error saving custom data:", chrome.runtime.lastError)
         resolve({ success: false })
       } else {
-        console.log("✅ Custom data saved successfully")
         resolve({ success: true })
       }
     })
@@ -146,7 +136,6 @@ export async function clearCustomData(): Promise<{ success: boolean }> {
         console.error("Error clearing custom data:", chrome.runtime.lastError)
         resolve({ success: false })
       } else {
-        console.log("✅ Custom data cleared successfully")
         resolve({ success: true })
       }
     })
@@ -189,7 +178,6 @@ export async function setGeminiApiKey(
         console.error("Error saving Gemini API key:", chrome.runtime.lastError)
         resolve({ success: false })
       } else {
-        console.log("✅ Gemini API key saved")
         resolve({ success: true })
       }
     })
@@ -206,7 +194,6 @@ export async function clearGeminiApiKey(): Promise<{ success: boolean }> {
         )
         resolve({ success: false })
       } else {
-        console.log("✅ Gemini API key cleared")
         resolve({ success: true })
       }
     })

@@ -34,7 +34,6 @@ export function RateLimitStatus() {
           const user = await getUser()
           if (user?.id) {
             await syncRateLimitFromDatabase(user.id)
-            console.log("✅ [RateLimitStatus] Rate limit synced from database")
           }
         } catch (syncError) {
           console.warn(

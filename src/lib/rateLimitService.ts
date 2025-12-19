@@ -109,7 +109,6 @@ export async function getRateLimitStatus(userId?: string): Promise<{
         effectiveUserId = currentUser.id
       }
     } catch (error) {
-      console.log("ℹ️ [getRateLimitStatus] No logged-in user")
       effectiveUserId = "device-local"
     }
   }
@@ -124,14 +123,9 @@ export async function getRateLimitStatus(userId?: string): Promise<{
 
   // If we have a real user ID and it's not device-local, check payment and database
   if (effectiveUserId && effectiveUserId !== "device-local") {
-    console.log(`🔐 [getRateLimitStatus] User detected: ${effectiveUserId}`)
-
     // Fast-path: trust cached payment when available
     const cachedPayment = await getCachedPaymentStatus()
     if (cachedPayment === "PAID") {
-      console.log(
-        "💳 [getRateLimitStatus] Cached payment=PAID, skipping rate limit fetch"
-      )
       return {
         remaining: Infinity,
         isLimited: false,
@@ -141,15 +135,10 @@ export async function getRateLimitStatus(userId?: string): Promise<{
     }
 
     // Check payment status from DB
-    console.log(`🔍 [getRateLimitStatus] Checking payment status...`)
     const paymentStatus = await checkPaymentStatus(effectiveUserId)
-    console.log(
-      `💳 [getRateLimitStatus] Payment status returned: ${paymentStatus}`
-    )
 
     // If user is paid, no rate limiting
     if (paymentStatus === "PAID") {
-      console.log(`💳 [getRateLimitStatus] User has PAID status`)
       return {
         remaining: Infinity,
         isLimited: false,
@@ -170,7 +159,6 @@ export async function getRateLimitStatus(userId?: string): Promise<{
         .maybeSingle()
 
       if (error && error.code !== "PGRST116") {
-        console.warn(`⚠️ [getRateLimitStatus] DB error: ${error.message}`)
         return {
           remaining: FREE_TIER_CREDITS,
           isLimited: false,
@@ -227,7 +215,6 @@ export async function getRateLimitStatus(userId?: string): Promise<{
         paymentStatus
       }
     } catch (dbError) {
-      console.error(`❌ [getRateLimitStatus] Database error caught: ${dbError}`)
       // IMPORTANT: For logged-in users, return fresh limit instead of falling back
       // This prevents the local storage from interfering
       return {
@@ -240,11 +227,9 @@ export async function getRateLimitStatus(userId?: string): Promise<{
   }
 
   // For non-logged-in users or fallback: use local storage
-  console.log(`🔍 [getRateLimitStatus] Using local storage for date: ${today}`)
 
   const rateLimitData = await new Promise<any>((resolve) => {
     chrome.storage.local.get(STORAGE_KEY, (result) => {
-      console.log(`🔍 [getRateLimitStatus] Storage result:`, result)
       let data: any = result[STORAGE_KEY]
 
       // Migrate V1 -> V2 if needed
@@ -306,7 +291,6 @@ export async function getRateLimitStatus(userId?: string): Promise<{
  */
 export async function incrementGenerationCount(userId?: string): Promise<void> {
   const today = new Date().toISOString().split("T")[0]
-  console.log(`⬆️ [incrementGenerationCount] Called for date: ${today}`)
 
   // Prefer provided userId; only hit auth if missing
   let currentUser = null
@@ -319,7 +303,6 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
         effectiveUserId = currentUser.id
       }
     } catch (error) {
-      console.log("ℹ️ [incrementGenerationCount] No logged-in user")
       effectiveUserId = "device-local"
     }
   }
@@ -334,39 +317,21 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
 
   // Pro users bypass counting entirely
   if (effectiveUserId && effectiveUserId !== "device-local") {
-    console.log(
-      `🔍 [incrementGenerationCount] Checking payment status for user: ${effectiveUserId}`
-    )
     try {
       const cachedPayment = await getCachedPaymentStatus()
       if (cachedPayment === "PAID") {
-        console.log(
-          "✅ [incrementGenerationCount] PRO USER DETECTED - SKIP DECREMENT"
-        )
         return
       }
       const payment = await checkPaymentStatus(effectiveUserId)
-      console.log(
-        `💳 [incrementGenerationCount] Payment status returned: ${payment}`
-      )
       if (payment === "PAID") {
-        console.log(
-          "✅ [incrementGenerationCount] PRO USER DETECTED - SKIP DECREMENT"
-        )
         return
       }
-    } catch (e) {
-      console.warn("⚠️ [incrementGenerationCount] Payment check failed:", e)
-    }
+    } catch (e) {}
   }
 
   // If we have a real user ID (not device-local), update database
   if (effectiveUserId && effectiveUserId !== "device-local") {
     try {
-      console.log(
-        `🔐 [incrementGenerationCount] User detected, updating DB for: ${effectiveUserId}`
-      )
-
       // Get latest record
       const { data: existingData, error: selectError } = await dbClient
         .from("rate_limit_usage")
@@ -376,29 +341,16 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
         .limit(1)
         .maybeSingle()
 
-      console.log(
-        `🔍 [incrementGenerationCount] Query result - Error: ${selectError ? selectError.message : "none"}, Data: ${existingData ? existingData.generation_count : "null"}`
-      )
-
       if (!selectError && existingData) {
         // Reset window if expired
         let remaining = existingData.generation_count
-        console.log(
-          `📊 [incrementGenerationCount] Current remaining: ${remaining}`
-        )
         if (
           isExpiredSince(existingData.updated_at as any, RESET_WINDOW_HOURS)
         ) {
           remaining = FREE_TIER_CREDITS
-          console.log(
-            `⏰ [incrementGenerationCount] Reset window expired, resetting to ${FREE_TIER_CREDITS}`
-          )
         }
         // Decrement if available
         const newRemaining = Math.max(0, remaining - 1)
-        console.log(
-          `🔽 [incrementGenerationCount] Decrementing: ${remaining} -> ${newRemaining}`
-        )
 
         const { data: updateData, error: updateError } = await dbClient
           .from("rate_limit_usage")
@@ -411,21 +363,9 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
           .select()
 
         if (updateError) {
-          console.error(
-            "❌ [incrementGenerationCount] DB update error:",
-            updateError.message,
-            updateError
-          )
           // Still return - don't fall back for logged-in users
           return
         } else {
-          console.log(
-            `✅ [incrementGenerationCount] DB updated successfully!`,
-            updateData
-          )
-          console.log(
-            `✅ [incrementGenerationCount] New remaining: ${newRemaining}`
-          )
           return
         }
       } else if (selectError && selectError.code === "PGRST116") {
@@ -440,26 +380,11 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
             updated_at: new Date().toISOString()
           })
 
-        if (insertError) {
-          console.error(
-            "❌ [incrementGenerationCount] DB insert error:",
-            insertError
-          )
-        } else {
-          console.log(
-            `✅ [incrementGenerationCount] DB created new record with count: 1`
-          )
-        }
         return
       } else if (selectError) {
-        console.error(
-          "❌ [incrementGenerationCount] DB select error:",
-          selectError
-        )
         return
       }
     } catch (dbError) {
-      console.error("❌ [incrementGenerationCount] Database error:", dbError)
       // For logged-in users, DO NOT fall back - just return
       // The database is the source of truth for logged-in users
       return
@@ -491,9 +416,6 @@ export async function incrementGenerationCount(userId?: string): Promise<void> {
       data.lastResetAt = new Date().toISOString()
       // Use sync callback to ensure it's written before returning
       chrome.storage.local.set({ [STORAGE_KEY]: data }, () => {
-        console.log(
-          `✅ [incrementGenerationCount] Local saved remaining: ${(data as LocalRateV2).remaining}`
-        )
         resolve()
       })
     })
@@ -524,7 +446,6 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
         effectiveUserId = currentUser.id
       }
     } catch (error) {
-      console.log("ℹ️ [checkAndIncrementIfAllowed] No logged-in user")
       effectiveUserId = "device-local"
     }
   }
@@ -570,21 +491,12 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
       console.log(
         `⚠️ [checkAndIncrementIfAllowed] Payment status is NOT "PAID", continuing with normal flow`
       )
-    } catch (e) {
-      console.error(
-        "❌ [checkAndIncrementIfAllowed] Payment check EXCEPTION:",
-        e
-      )
-    }
+    } catch (e) {}
   }
 
   // If we have a real user ID (not device-local), use database
   if (effectiveUserId && effectiveUserId !== "device-local") {
     try {
-      console.log(
-        `🔍 [checkAndIncrementIfAllowed] Checking DB for user: ${effectiveUserId}`
-      )
-
       // Get latest record (12h window, remaining credits model)
       const { data: existingData, error: selectError } = await dbClient
         .from("rate_limit_usage")
@@ -594,21 +506,13 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
         .limit(1)
         .maybeSingle()
 
-      console.log(`📊 [checkAndIncrementIfAllowed] Fetched data:`, existingData)
-
       let remaining = FREE_TIER_CREDITS
       if (!selectError && existingData) {
         remaining = existingData.generation_count
-        console.log(
-          `📊 [checkAndIncrementIfAllowed] Current remaining: ${remaining}`
-        )
         if (
           isExpiredSince(existingData.updated_at as any, RESET_WINDOW_HOURS)
         ) {
           remaining = FREE_TIER_CREDITS
-          console.log(
-            `⏰ [checkAndIncrementIfAllowed] Reset window expired, resetting to ${FREE_TIER_CREDITS}`
-          )
         }
       } else if (selectError && selectError.code === "PGRST116") {
         // No record, create one
@@ -621,21 +525,11 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
         })
         remaining = FREE_TIER_CREDITS
       } else if (selectError) {
-        console.error(
-          "❌ [checkAndIncrementIfAllowed] Select error:",
-          selectError
-        )
       }
 
       const canGenerate = remaining > 0
       if (canGenerate) {
         const newRemaining = Math.max(0, remaining - 1)
-        console.log(
-          `🔽 [checkAndIncrementIfAllowed] Decrementing: ${remaining} -> ${newRemaining}`
-        )
-        console.log(
-          `🎯 [checkAndIncrementIfAllowed] Updating record with id: ${existingData?.id}, user_id: ${effectiveUserId}`
-        )
 
         const {
           data: updateData,
@@ -651,18 +545,7 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
           .eq("user_id", effectiveUserId)
           .select()
 
-        console.log(`📝 [checkAndIncrementIfAllowed] Update response:`, {
-          updateData,
-          updateError,
-          count
-        })
-
         if (updateError) {
-          console.error(
-            "❌ [checkAndIncrementIfAllowed] Update error:",
-            updateError.message,
-            updateError
-          )
           return {
             canGenerate: false,
             message: "Failed to update rate limit",
@@ -671,9 +554,6 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
         }
 
         if (!updateData || updateData.length === 0) {
-          console.warn(
-            "⚠️ [checkAndIncrementIfAllowed] Update returned no rows (likely RLS). Allowing generation to proceed."
-          )
           return {
             canGenerate: true,
             message: null,
@@ -681,32 +561,19 @@ export async function checkAndIncrementIfAllowed(userId?: string): Promise<{
           }
         }
 
-        console.log(
-          `✅ [checkAndIncrementIfAllowed] DB updated successfully!`,
-          updateData
-        )
-        console.log(
-          `✅ [checkAndIncrementIfAllowed] New remaining: ${newRemaining}`
-        )
         return {
           canGenerate: true,
           message: null,
           newCount: newRemaining
         }
       } else {
-        console.log(
-          `⛔ [checkAndIncrementIfAllowed] User limited at DB remaining: ${remaining}`
-        )
         return {
           canGenerate: false,
           message: `⛔ You've reached your limit. Credits renew in 12 hours.`,
           newCount: remaining
         }
       }
-    } catch (dbError) {
-      console.error("❌ [checkAndIncrementIfAllowed] Database error:", dbError)
-      console.log("⚠️ Falling back to local storage")
-    }
+    } catch (dbError) {}
   }
 
   // Fallback to local storage

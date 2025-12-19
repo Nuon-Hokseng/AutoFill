@@ -80,9 +80,7 @@ export default function Dashboard() {
             .eq("user_id", user.id)
 
           if (error) {
-            console.error("Failed to delete from cloud:", error)
           } else {
-            console.log("✅ Profile deleted from cloud")
           }
         }
       } catch (error) {

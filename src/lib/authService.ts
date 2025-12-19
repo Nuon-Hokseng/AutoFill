@@ -36,9 +36,7 @@ export async function signup(
         updated_at: new Date().toISOString()
       })
     }
-  } catch (e) {
-    console.warn("⚠️ [signup] Failed to initialize rate_limit_usage:", e)
-  }
+  } catch (e) {}
 
   return data
 }
@@ -54,16 +52,10 @@ export async function login(email: string, password: string) {
   // Preserve guest rate limit, then clear device cache while logged in
   await archiveLocalRateLimit()
   await clearLocalRateLimit()
-  console.log(
-    "✅ [authService.login] Rate limit cache archived and cleared after login"
-  )
 
   // Sync rate limit from database to ensure consistency across devices
   if (data?.user?.id) {
     await syncRateLimitFromDatabase(data.user.id)
-    console.log(
-      "✅ [authService.login] Rate limit synced from database after login"
-    )
   }
 
   return data

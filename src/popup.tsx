@@ -79,9 +79,7 @@ export default function IndexPopup() {
   const toggleAIMode = () => {
     const newValue = !aiModeEnabled
     setAiModeEnabled(newValue)
-    chrome.storage.local.set({ aiModeEnabled: newValue }, () => {
-      console.log(`🤖 AI mode ${newValue ? "enabled" : "disabled"}`)
-    })
+    chrome.storage.local.set({ aiModeEnabled: newValue }, () => {})
   }
 
   useEffect(() => {
@@ -128,17 +126,8 @@ export default function IndexPopup() {
           const { data } = await supabase.auth.getSession()
           if (data?.session) {
             const result = await syncWebsiteProfilesToSupabase()
-            if (result.success) {
-              console.log("✅ Website profile synced to cloud")
-            } else {
-              console.warn("⚠️ Failed to sync profile to cloud:", result.error)
-            }
-          } else {
-            console.log("ℹ️ Not signed in — saved locally only")
           }
-        } catch (e) {
-          console.warn("⚠️ Could not check auth state; skipping cloud sync")
-        }
+        } catch (e) {}
       })
     })
   }

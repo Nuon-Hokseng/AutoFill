@@ -57,16 +57,7 @@ async function getEncryptionPassword(): Promise<string | null> {
   try {
     let storageData = await chrome.storage.local.get(["user_id", "auth_token"])
 
-    console.log("🔑 Retrieved storage data:", {
-      hasUserId: !!storageData.user_id,
-      hasAuthToken: !!storageData.auth_token,
-      userId: storageData.user_id,
-      tokenLength: storageData.auth_token?.length || 0
-    })
-
     if (!storageData.user_id || !storageData.auth_token) {
-      console.log("⚠️ Tokens missing, fetching from current session...")
-
       const {
         data: { session }
       } = await supabase.auth.getSession()
@@ -75,7 +66,6 @@ async function getEncryptionPassword(): Promise<string | null> {
       } = await supabase.auth.getUser()
 
       if (session?.access_token && user?.id) {
-        console.log("✅ Got tokens from session, storing them...")
         await chrome.storage.local.set({
           user_id: user.id,
           auth_token: session.access_token,
@@ -87,7 +77,6 @@ async function getEncryptionPassword(): Promise<string | null> {
           auth_token: session.access_token
         }
       } else {
-        console.error("❌ No session found. Please log in again.")
         return null
       }
     }
@@ -104,7 +93,6 @@ async function getEncryptionPassword(): Promise<string | null> {
 
 export async function syncProfileToSupabase(): Promise<SyncResult> {
   try {
-    console.log("🔄 Checking authentication...")
     const {
       data: { user },
       error: authError
@@ -120,12 +108,9 @@ export async function syncProfileToSupabase(): Promise<SyncResult> {
       return { success: false, error: "User not authenticated" }
     }
 
-    console.log("✅ User authenticated:", user.id)
-
     // Get data from Chrome storage
     const result = await chrome.storage.local.get("autofillData")
     const localData: CustomFieldData = result.autofillData || {}
-    console.log("📦 Local data to sync:", Object.keys(localData))
 
     // Get encryption password
     const encryptionPassword = await getEncryptionPassword()
@@ -435,23 +420,19 @@ export async function fullSync(): Promise<SyncResult> {
   }
 }
 
-
 export async function markSyncPending(): Promise<void> {
   await chrome.storage.local.set({ sync_pending: true })
 }
-
 
 export async function isSyncPending(): Promise<boolean> {
   const result = await chrome.storage.local.get("sync_pending")
   return result.sync_pending === true
 }
 
-
 export async function getLastSyncTime(): Promise<number | null> {
   const result = await chrome.storage.local.get("last_sync_timestamp")
   return result.last_sync_timestamp || null
 }
-
 
 export async function clearLocalData(): Promise<void> {
   try {

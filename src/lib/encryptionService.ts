@@ -246,5 +246,4 @@ export async function hasEncryptedData(key: string): Promise<boolean> {
  */
 export async function removeEncryptedData(key: string): Promise<void> {
   await chrome.storage.local.remove(key)
-  console.log(`✅ Encrypted data removed from key: ${key}`)
 }

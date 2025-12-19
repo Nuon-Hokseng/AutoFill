@@ -115,8 +115,6 @@ const normalizeAutofill = (input: any): AutofillData | null => {
     data.firstname || data.lastname || data.email || data.username
 
   if (!hasMinimumData) {
-    console.error("❌ Validation failed. No core fields present")
-
     return null
   }
 
@@ -185,8 +183,6 @@ export async function fetchAutofillData(): Promise<AutofillData | null> {
       } catch {
         console.error("❌ Invalid or missing fields in backend response")
       }
-    } else {
-      console.log("✅ Backend data normalized successfully")
     }
     return normalized || null
   } catch (err: any) {
@@ -209,18 +205,14 @@ export async function generateDummyData(
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const data = await fetchAutofillData()
     if (data) {
-      console.log("✅ Successfully fetched autofill data from backend")
       return data
     }
 
     if (attempt < maxRetries) {
       const delayMs = 1000 * (attempt + 1) // 1000ms then 2000ms
-      console.log(`⏳ Backend fetch failed, retrying in ${delayMs}ms...`)
       await delay(delayMs)
     }
   }
-
-  console.warn("⚠️ All backend fetch attempts failed; will use backup data")
   return null
 }
 
@@ -237,7 +229,7 @@ function getBackupData(): AutofillData {
   const randomIndex = Math.floor(Math.random() * MERGED_DUMMY_POOL.length)
   const backup = { ...MERGED_DUMMY_POOL[randomIndex] }
   backup.password = generateRandomPassword()
-  console.log("🎲 Using backup dummy data (random profile)")
+
   return backup
 }
 
@@ -247,22 +239,17 @@ async function initializeCache(attemptNumber: number = 1): Promise<void> {
   const maxAttempts = 2
 
   if (isGenerating) {
-    console.log("⏳ Generation already in progress...")
     return
   }
 
   isGenerating = true
-  console.log(
-    `🔄 Generating AI dummy data (attempt ${attemptNumber}/${maxAttempts})...`
-  )
 
   // Immediately provide backup data for instant use
   if (!cachedData) {
-    const backupData = getBackupData()
+    const backupData = await getBackupData()
     cachedData = backupData
     cacheTimestamp = Date.now()
     usingBackupData = true
-    console.log("⚡ Backup data ready for instant use while AI generates...")
   }
 
   try {
@@ -289,8 +276,6 @@ async function initializeCache(attemptNumber: number = 1): Promise<void> {
           }
         }
       )
-
-      console.log("✅ AI-generated data cached and replaced backup!")
 
       // Schedule auto-refresh after 1 hour
       scheduleCacheRefresh()
@@ -325,23 +310,18 @@ async function initializeCache(attemptNumber: number = 1): Promise<void> {
         // Retry if we haven't exceeded max attempts
         isGenerating = false
         const retryDelay = attemptNumber * 3000 // 3s, 6s
-        console.log(`⏳ Retrying AI generation in ${retryDelay}ms...`)
+
         await delay(retryDelay)
         return initializeCache(attemptNumber + 1)
       }
     }
   } catch (error) {
-    console.error("Error generating AI cached data:", error)
-
     // Retry if we haven't exceeded max attempts
     if (attemptNumber < maxAttempts) {
       isGenerating = false
       const retryDelay = attemptNumber * 3000
-      console.log(`⏳ Retrying after error in ${retryDelay}ms...`)
       await delay(retryDelay)
       return initializeCache(attemptNumber + 1)
-    } else {
-      console.warn("⚠️ Keeping backup data due to generation errors")
     }
   } finally {
     isGenerating = false
@@ -356,11 +336,8 @@ function scheduleCacheRefresh(): void {
   }
 
   refreshTimer = setTimeout(() => {
-    console.log("🔄 Auto-refreshing cached data after 1 hour...")
     initializeCache()
   }, CACHE_REFRESH_DURATION)
-
-  console.log("⏰ Cache auto-refresh scheduled for 1 hour from now")
 }
 
 // Get cached data (instant, no waiting!)
@@ -396,31 +373,22 @@ export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
 
   // Check if cache needs initialization or refresh
   if (!cachedData || now - cacheTimestamp > CACHE_REFRESH_DURATION) {
-    console.log("🔄 Cache empty or expired, initializing...")
     await initializeCache()
   }
 
   // If still no data after initialization attempt, use backup as last resort
   if (!cachedData) {
-    console.warn("⚠️ No cached data available, using backup as fallback")
-    cachedData = getBackupData()
+    cachedData = await getBackupData()
     cacheTimestamp = now
     usingBackupData = true
   }
-
-  const cacheAge = Math.floor((now - cacheTimestamp) / 1000)
-  const dataType = usingBackupData ? "backup" : "AI-generated"
-  console.log(`⚡ Instantly serving ${dataType} data (age: ${cacheAge}s)`)
 
   return cachedData
 }
 
 // Preload single data entry on extension startup
 export function preloadData(): void {
-  console.log("🚀 Preloading single data entry in background...")
-  initializeCache().catch((error) => {
-    console.error("Error preloading cache:", error)
-  })
+  initializeCache().catch(() => {})
 }
 
 // Check if cache has valid data
@@ -461,12 +429,6 @@ export function clearCache(): void {
   // Clear from storage as well
   chrome.storage.local.remove(
     ["generatedData", "generatedDataTimestamp", "usingBackup"],
-    () => {
-      if (chrome.runtime.lastError) {
-        console.error("Error clearing storage:", chrome.runtime.lastError)
-      }
-    }
+    () => {}
   )
-
-  console.log("🗑️ Cache cleared")
 }

@@ -124,9 +124,6 @@ export async function showRateLimitNotification(): Promise<void> {
         message: message,
         priority: 2
       })
-
-      // Also alert as fallback
-      console.warn(`🔴 ${message}`)
     }
   } catch (error) {
     console.error("Failed to show rate limit notification:", error)
