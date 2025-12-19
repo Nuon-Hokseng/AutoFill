@@ -215,11 +215,9 @@ export default function IndexPopup() {
               <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-1">
                 FormGenie
                 {paymentInfo?.status === "PAID" && (
-                  <Crown
-                    size={16}
-                    className="text-yellow-500"
-                    title="Premium"
-                  />
+                  <div title="Premium">
+                    <Crown size={16} className="text-yellow-500" />
+                  </div>
                 )}
               </h2>
             </div>

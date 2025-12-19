@@ -1,5 +1,5 @@
 // Rate limiting service for free users
-// Limits free users to 3 auto-generated data requests per day
+// Limits free users to 20 auto-generated data requests per day
 // For logged-in users: tracks per user_id in database
 // For logged-out users: tracks locally using device-local storage
 //
@@ -808,7 +808,7 @@ export async function checkPaymentStatus(
       .eq("user_id", effectiveUserId)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     console.log(
       `💳 [checkPaymentStatus] Query result - Error: ${error ? error.message : "none"}, Data:`,
@@ -959,9 +959,21 @@ export async function getPaymentDetails(userId?: string): Promise<{
       .eq("user_id", effectiveUserId)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (error || !data) {
+      // Cache NOT_FOUND to avoid repeated DB hits
+      try {
+        await new Promise<void>((resolve) =>
+          chrome.storage.local.set(
+            {
+              lastPaymentStatus: "NOT_FOUND",
+              lastPaymentCheckTime: new Date().toISOString()
+            },
+            () => resolve()
+          )
+        )
+      } catch {}
       return { status: "NOT_FOUND", expiresAt: null, daysRemaining: null }
     }
 
@@ -975,17 +987,45 @@ export async function getPaymentDetails(userId?: string): Promise<{
       daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 
       if (now > expiryDate) {
+        // Cache EXPIRED
+        try {
+          await new Promise<void>((resolve) =>
+            chrome.storage.local.set(
+              {
+                lastPaymentStatus: "EXPIRED",
+                lastPaymentCheckTime: new Date().toISOString()
+              },
+              () => resolve()
+            )
+          )
+        } catch {}
         return { status: "EXPIRED", expiresAt: expires_at, daysRemaining: 0 }
       }
     }
 
+    let status: "PAID" | "PENDING" | "EXPIRED" = "EXPIRED"
     if (payway_status === "PAID") {
-      return { status: "PAID", expiresAt: expires_at, daysRemaining }
+      status = "PAID"
     } else if (payway_status === "PENDING") {
-      return { status: "PENDING", expiresAt: expires_at, daysRemaining }
+      status = "PENDING"
     } else {
-      return { status: "EXPIRED", expiresAt: expires_at, daysRemaining: 0 }
+      status = "EXPIRED"
     }
+
+    // Cache status for faster checks in background flows
+    try {
+      await new Promise<void>((resolve) =>
+        chrome.storage.local.set(
+          {
+            lastPaymentStatus: status,
+            lastPaymentCheckTime: new Date().toISOString()
+          },
+          () => resolve()
+        )
+      )
+    } catch {}
+
+    return { status, expiresAt: expires_at, daysRemaining }
   } catch (error) {
     console.error("❌ Error getting payment details:", error)
     return { status: "ERROR", expiresAt: null, daysRemaining: null }
@@ -1034,8 +1074,21 @@ export async function getRateLimitStats(): Promise<{
     console.log("ℹ️ [getRateLimitStats] No logged-in user")
   }
 
-  // If user is logged in, check payment status first
+  // If user is logged in, check cached payment first (fast path)
   if (currentUser?.id) {
+    try {
+      const cached = await getCachedPaymentStatus()
+      if (cached === "PAID") {
+        return {
+          generationCount: 0,
+          dailyLimit: Infinity,
+          percentageUsed: 0,
+          lastReset: today
+        }
+      }
+    } catch {}
+
+    // Otherwise, check live payment status
     console.log(
       `🔍 [getRateLimitStats] Checking payment for user: ${currentUser.id}`
     )

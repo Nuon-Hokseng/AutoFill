@@ -171,7 +171,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 }
 
                 console.log(
-                  `✅ Generation count incremented to ${result.newCount}/3`
+                  `✅ Generation count incremented to ${result.newCount}/20`
                 )
               } catch (err) {
                 console.error(
