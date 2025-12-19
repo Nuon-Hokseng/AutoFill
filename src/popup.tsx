@@ -379,8 +379,18 @@ export default function IndexPopup() {
                   )
                 }}
                 className="justify-center w-full text-sm py-2 border border-gray-200 rounded flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Configuration
+              </button>
+              <button
+                onClick={() => {
+                  chrome.tabs.create({
+                    url: "https://landing-page-autofill.vercel.app/"
+                  })
+                }}
+                className="justify-center w-full text-sm py-2 border-gray-200 rounded text-black flex items-center gap-2 transition-all shadow-md">
                 <Globe className="w-4 h-4" />
-                Manage Websites
+                Webpage
               </button>
 
               {/* Payment Info Section */}
@@ -472,12 +482,6 @@ export default function IndexPopup() {
                         access!
                       </p>
                     )}
-
-                    <button
-                      onClick={loadPaymentInfo}
-                      className="w-full mt-2 text-xs py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-                      Refresh Status
-                    </button>
                   </div>
                 ) : (
                   <p className="text-xs text-gray-500">

@@ -7,7 +7,6 @@ export function matchesAny(str: string | null, keywords: string[]): boolean {
 export function getAssociatedLabelText(
   input: HTMLInputElement | HTMLSelectElement
 ): string {
-
   if (input.id) {
     const label = document.querySelector(`label[for="${input.id}"]`)
     if (label) {
@@ -15,7 +14,6 @@ export function getAssociatedLabelText(
       return text
     }
   }
-
 
   const parentLabel = input.closest("label")
   if (parentLabel) {
@@ -122,7 +120,16 @@ export async function fillFieldWithAnimation(
     try {
       // Focus element first
       element.focus()
-      element.click()
+
+      // Try to click, but don't fail if it throws
+      try {
+        element.click()
+      } catch (clickError) {
+        console.debug(
+          "Note: click() not available, continuing anyway",
+          clickError
+        )
+      }
 
       // Use native setter for React/Vue compatibility
       const nativeSetter = Object.getOwnPropertyDescriptor(
@@ -195,10 +202,10 @@ export async function fillFieldWithAnimation(
 
       resolve()
     } catch (error) {
-      console.error(
-        `❌ Error filling field "${(element as HTMLInputElement).name}":`,
-        error instanceof Error ? error.message : String(error)
-      )
+      // Silently log errors without displaying them to user
+      if (error instanceof Error) {
+        console.debug(`[fillFieldWithAnimation] Error: ${error.message}`)
+      }
       resolve()
     }
   })
