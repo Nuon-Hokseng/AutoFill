@@ -68,19 +68,17 @@ export function RateLimitStatus() {
     return null
   }
 
-  // If user is paid or we detect infinite limit, show premium card
+  // If user is paid or we detect infinite limit, show premium card (minimal)
   if (stats.paymentStatus === "PAID" || !isFinite(stats.dailyLimit)) {
     return (
       <Card className="bg-green-50 border-green-200">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-green-900 flex items-center gap-2">
-            <span className="text-lg">✅</span> Premium Access
+          <CardTitle className="text-sm font-medium text-green-900">
+            Premium: Unlimited access
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-xs text-green-800">
-            Unlimited auto-generate access
-          </p>
+          <p className="text-xs text-green-800">You're all set.</p>
         </CardContent>
       </Card>
     )
@@ -91,8 +89,7 @@ export function RateLimitStatus() {
     return (
       <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
         <p className="text-yellow-800 text-sm">
-          ⏳ <strong>Payment Pending:</strong> Your payment is being processed.
-          You'll get unlimited access once it's confirmed.
+          Payment processing. Unlimited access available once confirmed.
         </p>
       </div>
     )
@@ -102,19 +99,16 @@ export function RateLimitStatus() {
     return (
       <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
         <p className="text-orange-800 text-sm">
-          ⏰ <strong>Payment Expired:</strong> Your premium access has expired.
-          Please renew to continue unlimited usage.
+          Premium expired. Renew to continue.
         </p>
       </div>
     )
   }
 
   // Free user - show rate limit status
-  const remaining = stats.dailyLimit - stats.generationCount
+  const remaining = Math.max(0, stats.dailyLimit - stats.generationCount)
   const isLimited = remaining <= 0
   const progressPercent = Math.min(stats.percentageUsed, 100)
-  const baseLimit = 3
-  const bonusUses = Math.max(0, stats.dailyLimit - baseLimit)
 
   return (
     <Card
@@ -123,9 +117,7 @@ export function RateLimitStatus() {
       }>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium">
-          {isLimited
-            ? "⛔ Daily Limit Reached"
-            : "📊 Daily Auto-Generate Limit"}
+          {isLimited ? "Daily limit reached" : "Daily limit"}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -139,39 +131,18 @@ export function RateLimitStatus() {
         </div>
 
         {/* Stats */}
-        <div className="flex justify-between items-center text-xs">
-          <span className={isLimited ? "text-red-900" : "text-blue-900"}>
+        <div className="flex justify-between items-center text-xs text-gray-800">
+          <span>
             <strong>
               {stats.generationCount}/{stats.dailyLimit}
             </strong>{" "}
-            used today
-            {bonusUses > 0 && (
-              <span className="ml-1 text-green-700">
-                (+{bonusUses} 🎁 bonus)
-              </span>
-            )}
+            today
           </span>
-          <span className="text-gray-600">
-            Resets: {new Date(stats.lastReset).toLocaleDateString()}
-          </span>
+          <span>Resets {new Date(stats.lastReset).toLocaleDateString()}</span>
         </div>
 
-        {isLimited && bonusUses === 0 && (
-          <p className="text-xs text-red-800 font-medium">
-            Come back tomorrow or upgrade to Premium for unlimited access.
-          </p>
-        )}
-
-        {isLimited && bonusUses > 0 && (
-          <p className="text-xs text-green-800 font-medium">
-            ✨ You have {bonusUses} bonus uses from logging in! Use them wisely.
-          </p>
-        )}
-
         {remaining > 0 && (
-          <p className="text-xs text-blue-800">
-            You have <strong>{remaining} requests</strong> remaining today.
-          </p>
+          <p className="text-xs text-gray-700">{remaining} remaining today</p>
         )}
       </CardContent>
     </Card>

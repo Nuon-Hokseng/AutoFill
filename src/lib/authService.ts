@@ -30,7 +30,7 @@ export async function signup(
       const today = new Date().toISOString().split("T")[0]
       await supabase.from("rate_limit_usage").insert({
         user_id: userId,
-        generation_count: 3, // remaining credits (starts at 3)
+        generation_count: 20, // remaining credits (starts at 20)
         last_reset_date: today,
         bonus_uses: 0,
         updated_at: new Date().toISOString()

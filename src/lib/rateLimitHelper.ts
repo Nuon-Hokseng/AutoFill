@@ -30,7 +30,7 @@ export async function canGenerateData(): Promise<{
           : "tomorrow"
         return {
           canGenerate: false,
-          message: `⛔ You've reached your daily limit of 3 auto-generates. Log in to get 3 bonus uses! Or come back ${resetTime}.`,
+          message: `Daily limit reached (20/20 uses). Resets at ${resetTime}.`,
           paymentStatus: null,
           remaining: 0
         }
@@ -63,7 +63,7 @@ export async function canGenerateData(): Promise<{
       return {
         canGenerate: true,
         message:
-          "⏳ Your payment is being processed. You'll get unlimited access once confirmed.",
+          "Payment processing. Unlimited access available once confirmed.",
         paymentStatus: "PENDING",
         remaining: rateLimitStatus.remaining
       }
@@ -72,8 +72,7 @@ export async function canGenerateData(): Promise<{
     if (rateLimitStatus.paymentStatus === "EXPIRED") {
       return {
         canGenerate: false,
-        message:
-          "⏰ Your premium subscription has expired. Please renew to continue using auto-generate.",
+        message: "Premium subscription expired. Renew to continue.",
         paymentStatus: "EXPIRED",
         remaining: 0
       }
@@ -85,7 +84,7 @@ export async function canGenerateData(): Promise<{
         : "tomorrow"
       return {
         canGenerate: false,
-        message: `⛔ You've reached your daily limit of 3 auto-generates. Come back ${resetTime} or upgrade to Premium for unlimited access.`,
+        message: `Daily limit reached (20/20 uses). Resets at ${resetTime}.`,
         paymentStatus: "NOT_FOUND",
         remaining: 0
       }
@@ -142,7 +141,7 @@ export async function getStatusMessage(): Promise<string> {
     await canGenerateData()
 
   if (paymentStatus === "PAID") {
-    return "✅ Premium: Unlimited auto-generate access"
+    return "Premium: Unlimited access"
   }
 
   if (!canGenerate && message) {
@@ -150,14 +149,14 @@ export async function getStatusMessage(): Promise<string> {
   }
 
   if (remaining === Infinity) {
-    return "✅ Premium: Unlimited requests"
+    return "Premium: Unlimited access"
   }
 
   if (remaining > 0) {
-    return `📊 Free: ${remaining}/3 auto-generates remaining today`
+    return `${remaining}/20 uses remaining today`
   }
 
-  return "⛔ Daily limit reached"
+  return "Daily limit reached"
 }
 
 // Re-export for convenience

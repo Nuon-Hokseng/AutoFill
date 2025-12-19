@@ -22,7 +22,7 @@ interface RateLimitData {
 
 const STORAGE_KEY = "rateLimitData"
 const STORAGE_BACKUP_KEY = "rateLimitDataBackup"
-const FREE_TIER_CREDITS = 3 // Remaining credits model (count down from 3)
+const FREE_TIER_CREDITS = 20 // Remaining credits model (count down from 20)
 const RESET_WINDOW_HOURS = 12 // Renew credits every 12 hours
 const LOGIN_BONUS_USES = 3 // Bonus uses when logging in after hitting limit (only if you keep bonus logic)
 
