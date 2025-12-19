@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   CreditCard,
+  Crown,
   FileText,
   Globe,
   RefreshCw,
@@ -211,8 +212,15 @@ export default function IndexPopup() {
               <IconBox>
                 <Wand2 size={18} className="text-white" />
               </IconBox>
-              <h2 className="text-base sm:text-lg font-semibold text-gray-800">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-1">
                 FormGenie
+                {paymentInfo?.status === "PAID" && (
+                  <Crown
+                    size={16}
+                    className="text-yellow-500"
+                    title="Premium"
+                  />
+                )}
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">

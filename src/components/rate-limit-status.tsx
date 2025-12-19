@@ -68,20 +68,9 @@ export function RateLimitStatus() {
     return null
   }
 
-  // If user is paid or we detect infinite limit, show premium card (minimal)
+  // If user is paid or infinite limit, hide banner entirely
   if (stats.paymentStatus === "PAID" || !isFinite(stats.dailyLimit)) {
-    return (
-      <Card className="bg-green-50 border-green-200">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-green-900">
-            Premium: Unlimited access
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-green-800">You're all set.</p>
-        </CardContent>
-      </Card>
-    )
+    return null
   }
 
   // Payment pending or expired - warn user
