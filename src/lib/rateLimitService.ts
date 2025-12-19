@@ -16,20 +16,17 @@ import { supabase } from "./supabaseClient"
 interface RateLimitData {
   generationCount: number
   lastResetDate: string // YYYY-MM-DD
-  bonusUses?: number // Bonus uses granted for logging in at limit
-  wasLimitedBeforeLogin?: boolean // Track if user was limited before logging in
 }
 
 const STORAGE_KEY = "rateLimitData"
 const STORAGE_BACKUP_KEY = "rateLimitDataBackup"
 const FREE_TIER_CREDITS = 20 // Remaining credits model (count down from 20)
 const RESET_WINDOW_HOURS = 12 // Renew credits every 12 hours
-const LOGIN_BONUS_USES = 3 // Bonus uses when logging in after hitting limit (only if you keep bonus logic)
+// Bonus logic removed for simplicity
 
 type LocalRateV1 = {
   generationCount: number
   lastResetDate: string
-  bonusUses?: number
 }
 
 type LocalRateV2 = {
@@ -1116,7 +1113,7 @@ export async function getRateLimitStats(): Promise<{
     try {
       const { data, error } = await supabase
         .from("rate_limit_usage")
-        .select("generation_count, updated_at, bonus_uses")
+        .select("generation_count, updated_at")
         .eq("user_id", currentUser.id)
         .order("updated_at", { ascending: false })
         .limit(1)
@@ -1130,8 +1127,7 @@ export async function getRateLimitStats(): Promise<{
         }
 
         const used = Math.max(0, FREE_TIER_CREDITS - remaining)
-        const bonusUses = data.bonus_uses || 0
-        const dailyLimit = FREE_TIER_CREDITS + bonusUses
+        const dailyLimit = FREE_TIER_CREDITS
 
         return {
           generationCount: used,
@@ -1164,11 +1160,9 @@ export async function getRateLimitStats(): Promise<{
 
       resolve({
         generationCount: Math.max(0, FREE_TIER_CREDITS - remaining),
-        dailyLimit: FREE_TIER_CREDITS + (data.bonusUses || 0),
+        dailyLimit: FREE_TIER_CREDITS,
         percentageUsed: Math.round(
-          (Math.max(0, FREE_TIER_CREDITS - remaining) /
-            (FREE_TIER_CREDITS + (data.bonusUses || 0))) *
-            100
+          (Math.max(0, FREE_TIER_CREDITS - remaining) / FREE_TIER_CREDITS) * 100
         ),
         lastReset: (data.lastResetAt as string) || today
       })
@@ -1279,96 +1273,4 @@ export async function syncRateLimitFromDatabase(userId: string): Promise<void> {
  * For logged-in users: updates database
  * For logged-out users: updates local storage
  */
-export async function grantLoginBonus(userId?: string): Promise<void> {
-  const today = new Date().toISOString().split("T")[0]
-  console.log(`🎁 [grantLoginBonus] Checking for login bonus eligibility`)
-
-  // Try to get current user if userId not provided
-  let currentUser = null
-  let effectiveUserId = userId
-
-  if (!effectiveUserId) {
-    try {
-      currentUser = await getUser()
-      if (currentUser) {
-        effectiveUserId = currentUser.id
-      }
-    } catch (error) {
-      console.log("ℹ️ [grantLoginBonus] No logged-in user")
-      effectiveUserId = "device-local"
-    }
-  }
-
-  // If we have a real user ID (not device-local), update database
-  if (effectiveUserId && effectiveUserId !== "device-local") {
-    try {
-      const { data: existingData, error: selectError } = await supabase
-        .from("rate_limit_usage")
-        .select("generation_count, bonus_uses")
-        .eq("user_id", effectiveUserId)
-        .eq("last_reset_date", today)
-        .single()
-
-      if (!selectError && existingData) {
-        // Check if user was limited before logging in
-        if (
-          existingData.generation_count <= 0 &&
-          (!existingData.bonus_uses || existingData.bonus_uses === 0)
-        ) {
-          console.log(
-            `🎁 [grantLoginBonus] User was limited, granting ${LOGIN_BONUS_USES} bonus uses in DB!`
-          )
-
-          const { error: updateError } = await supabase
-            .from("rate_limit_usage")
-            .update({ bonus_uses: LOGIN_BONUS_USES })
-            .eq("user_id", effectiveUserId)
-            .eq("last_reset_date", today)
-
-          if (updateError) {
-            console.error("❌ [grantLoginBonus] DB update error:", updateError)
-          } else {
-            console.log(`✅ [grantLoginBonus] Bonus uses granted in DB`)
-            return
-          }
-        } else {
-          console.log(`ℹ️ [grantLoginBonus] User not eligible for DB bonus`)
-          return
-        }
-      }
-    } catch (dbError) {
-      console.error("❌ [grantLoginBonus] Database error:", dbError)
-      console.log("⚠️ [grantLoginBonus] Falling back to local storage")
-    }
-  }
-
-  // Fallback to local storage
-  return new Promise<void>((resolve) => {
-    chrome.storage.local.get(STORAGE_KEY, (result) => {
-      const data: RateLimitData = result[STORAGE_KEY] || {
-        generationCount: 0,
-        lastResetDate: today
-      }
-
-      // Check if user was limited before logging in (3 uses already made today)
-      if (
-        data.lastResetDate === today &&
-        data.generationCount >= FREE_TIER_CREDITS &&
-        !data.bonusUses
-      ) {
-        console.log(
-          `🎁 [grantLoginBonus] User was limited, granting ${LOGIN_BONUS_USES} bonus uses!`
-        )
-        data.bonusUses = LOGIN_BONUS_USES
-
-        chrome.storage.local.set({ [STORAGE_KEY]: data }, () => {
-          console.log(`✅ [grantLoginBonus] Bonus uses granted and saved`)
-          resolve()
-        })
-      } else {
-        console.log(`ℹ️ [grantLoginBonus] User not eligible for bonus`)
-        resolve()
-      }
-    })
-  })
-}
+// grantLoginBonus removed (bonus logic deprecated)

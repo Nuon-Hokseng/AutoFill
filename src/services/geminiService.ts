@@ -1,4 +1,4 @@
-import { BACKUP_DUMMY_POOL, generateRandomPassword } from "./dummyPool"
+import { generateRandomPassword, MERGED_DUMMY_POOL } from "./dummyPool"
 
 // Service for generating dummy data via backend API
 
@@ -203,7 +203,8 @@ export async function fetchAutofillData(): Promise<AutofillData | null> {
 export async function generateDummyData(
   retryCount: number = 0
 ): Promise<DummyUserData | null> {
-  const maxRetries = 3
+  // Try connecting to backend only 2 times total
+  const maxRetries = 1
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const data = await fetchAutofillData()
@@ -213,7 +214,7 @@ export async function generateDummyData(
     }
 
     if (attempt < maxRetries) {
-      const delayMs = 1000 * (attempt + 1)
+      const delayMs = 1000 * (attempt + 1) // 1000ms then 2000ms
       console.log(`⏳ Backend fetch failed, retrying in ${delayMs}ms...`)
       await delay(delayMs)
     }
@@ -233,8 +234,8 @@ let isGenerating = false
 
 // Get random backup dummy data with fresh password
 function getBackupData(): AutofillData {
-  const randomIndex = Math.floor(Math.random() * BACKUP_DUMMY_POOL.length)
-  const backup = { ...BACKUP_DUMMY_POOL[randomIndex] }
+  const randomIndex = Math.floor(Math.random() * MERGED_DUMMY_POOL.length)
+  const backup = { ...MERGED_DUMMY_POOL[randomIndex] }
   backup.password = generateRandomPassword()
   console.log("🎲 Using backup dummy data (random profile)")
   return backup
@@ -242,7 +243,8 @@ function getBackupData(): AutofillData {
 
 // Initialize cache with single entry (with retries)
 async function initializeCache(attemptNumber: number = 1): Promise<void> {
-  const maxAttempts = 3
+  // Limit AI generation attempts to 2 before sticking with backup
+  const maxAttempts = 2
 
   if (isGenerating) {
     console.log("⏳ Generation already in progress...")
@@ -322,7 +324,7 @@ async function initializeCache(attemptNumber: number = 1): Promise<void> {
       } else {
         // Retry if we haven't exceeded max attempts
         isGenerating = false
-        const retryDelay = attemptNumber * 3000 // 3s, 6s, 9s
+        const retryDelay = attemptNumber * 3000 // 3s, 6s
         console.log(`⏳ Retrying AI generation in ${retryDelay}ms...`)
         await delay(retryDelay)
         return initializeCache(attemptNumber + 1)
