@@ -2,9 +2,8 @@ import { detectDOBInputs, triggerInputEvents } from "../Detector/dobInputHelper"
 import { FIELD_KEYWORDS } from "../Detector/keyword"
 import { getAssociatedLabelText, matchesAny } from "../Detector/utils"
 
-const DOB_KEYWORDS: string[] = ([] as string[]).concat(
-  ...Object.values(FIELD_KEYWORDS)
-)
+// Keep DOB detection narrow so unrelated fields (like email) are not misclassified
+const DOB_KEYWORDS: string[] = FIELD_KEYWORDS.dob
 
 type DOBField = HTMLInputElement | HTMLSelectElement | HTMLElement
 
@@ -338,6 +337,24 @@ export async function fillDOB(
   if (!dob || !dobSelect) return false
 
   const [day, month, year] = dob.split("-")
+
+  // If all three point to the same date input, set it directly
+  if (
+    dobSelect.day &&
+    dobSelect.day === dobSelect.month &&
+    dobSelect.day === dobSelect.year &&
+    dobSelect.day instanceof HTMLInputElement &&
+    dobSelect.day.type === "date"
+  ) {
+    try {
+      const dateValue = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+      triggerInputEvents(dobSelect.day, dateValue)
+      return true
+    } catch (error) {
+      console.error("Error filling single date DOB field:", error)
+      return false
+    }
+  }
 
   let filledSomething = false
   if (dobSelect.day && day) {

@@ -64,6 +64,16 @@ export function detectDOBInputs(dobselect: DOBselect, keywords: string[]) {
       matchesAny(ariaLabelledByText, keywords)
 
     if (isDOBField) {
+      // Handle single date input elements (type="date" or similar)
+      const isDateInput = input.type === "date"
+      const dateIndicators = ["birthday", "birthdate", "date of birth", "dob"]
+      if (isDateInput || matchesAny(combinedText, dateIndicators)) {
+        if (!dobselect.day) dobselect.day = input
+        if (!dobselect.month) dobselect.month = input
+        if (!dobselect.year) dobselect.year = input
+        continue
+      }
+
       // More specific matching for day/month/year
       const dayKeywords = [
         "day",

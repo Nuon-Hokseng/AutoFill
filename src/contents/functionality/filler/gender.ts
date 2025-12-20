@@ -2,9 +2,7 @@
 import { FIELD_KEYWORDS } from "../Detector/keyword"
 import { getAssociatedLabelText, matchesAny } from "../Detector/utils"
 
-const GENDER_KEYWORDS: string[] = ([] as string[]).concat(
-  ...Object.values(FIELD_KEYWORDS)
-)
+const GENDER_KEYWORDS: string[] = FIELD_KEYWORDS.gender
 
 type GenderField = HTMLInputElement | HTMLElement
 
@@ -137,12 +135,12 @@ export function detectGenderFields(): GenderRadios {
 
     if (!isGenderField) continue
 
-    const hasMale = optionTexts.some((t) => ["male", "m", "2", "1"].includes(t))
+    const hasMale = optionTexts.some((t) => ["male", "m", "1", "2"].includes(t))
     const hasFemale = optionTexts.some((t) =>
-      ["female", "f", "1", "2"].includes(t)
+      ["female", "f", "2", "1"].includes(t)
     )
     const hasCustom = optionTexts.some((t) =>
-      ["custom", "other", "prefer"].some((k) => t.includes(k))
+      ["custom", "other", "prefer", "0", "-1"].some((k) => t.includes(k))
     )
 
     if (!genderRadios.male && hasMale) genderRadios.male = box
@@ -164,26 +162,27 @@ export async function fillGender(
   let genderLabel = ""
 
   // Use numeric values for precise selection
-  if (targetGender === "2" && genderRadios.male) {
+  if (
+    (targetGender === "1" || targetGender.toLowerCase() === "male") &&
+    genderRadios.male
+  ) {
     genderElement = genderRadios.male
-    genderLabel = "male (value: 2)"
-  } else if (targetGender === "1" && genderRadios.female) {
+    genderLabel = "male (value: 1)"
+  } else if (
+    (targetGender === "2" || targetGender.toLowerCase() === "female") &&
+    genderRadios.female
+  ) {
     genderElement = genderRadios.female
-    genderLabel = "female (value: 1)"
+    genderLabel = "female (value: 2)"
   } else if (targetGender === "-1" && genderRadios.custom) {
     genderElement = genderRadios.custom
     genderLabel = "custom (value: -1)"
   }
   // Fallback for text-based selection
-  else if (targetGender.toLowerCase() === "male" && genderRadios.male) {
-    genderElement = genderRadios.male
-    genderLabel = "male (text-based)"
-  } else if (targetGender.toLowerCase() === "female" && genderRadios.female) {
-    genderElement = genderRadios.female
-    genderLabel = "female (text-based)"
-  } else if (
+  else if (
     (targetGender.toLowerCase() === "custom" ||
-      targetGender.toLowerCase() === "other") &&
+      targetGender.toLowerCase() === "other" ||
+      targetGender === "0") &&
     genderRadios.custom
   ) {
     genderElement = genderRadios.custom
