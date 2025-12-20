@@ -64,7 +64,14 @@ export async function fillEmail(
 
   try {
     await fillFieldWithAnimation(emailEl, email)
-    return true
+    // Validate value took effect; some UIs ignore synthetic input
+    if (emailEl.value !== email) {
+      // Fallback: direct set + simple events
+      emailEl.value = email
+      emailEl.dispatchEvent(new Event("input", { bubbles: true }))
+      emailEl.dispatchEvent(new Event("change", { bubbles: true }))
+    }
+    return emailEl.value === email
   } catch (error) {
     console.error("Error filling email field:", error)
     return false

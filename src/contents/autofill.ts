@@ -11,6 +11,7 @@ import {
   detectCompanyField,
   detectCountryField,
   detectDOBFields,
+  detectEmailField,
   detectFullNameField,
   detectGenderFields,
   detectHomePhoneField,
@@ -120,8 +121,19 @@ function detectCredentialFields() {
   // Detect each field type using specialized functions
   // Use the combined scoring detector
   const scored = detectFields(inputs)
-  const emailEl = scored.email as HTMLInputElement | null
-  const usernameEl = scored.username as HTMLInputElement | null
+
+  // Primary detection via scorer
+  let emailEl = scored.email as HTMLInputElement | null
+  let usernameEl = scored.username as HTMLInputElement | null
+
+  // Fallback: targeted email detection for plain text inputs (e.g., autocomplete="username")
+  if (!emailEl) {
+    const textInputs = inputs.filter(
+      (el) =>
+        (el.type || el.getAttribute("type") || "").toLowerCase() !== "password"
+    )
+    emailEl = detectEmailField(textInputs)
+  }
 
   // For password fields, detect ALL password inputs (not just first one)
   const passwordInputs = inputs.filter(
