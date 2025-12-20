@@ -42,6 +42,42 @@ export function detectDOBFields(): DOBselect {
     const labelText = getAssociatedLabelText(select).toLowerCase()
     const dataTestId = (select.getAttribute("data-testid") || "").toLowerCase()
 
+    const optionTexts = Array.from(select.options).map((o) =>
+      (o.textContent || o.value || "").trim().toLowerCase()
+    )
+    const numericOptions = optionTexts
+      .map((t) => parseInt(t, 10))
+      .filter((n) => !Number.isNaN(n))
+    const monthNames = [
+      "january",
+      "february",
+      "march",
+      "april",
+      "may",
+      "june",
+      "july",
+      "august",
+      "september",
+      "october",
+      "november",
+      "december"
+    ]
+    const monthNameHits = optionTexts.filter((t) =>
+      monthNames.includes(t)
+    ).length
+    const hasMonthSequence =
+      numericOptions.length >= 12 &&
+      numericOptions.every((n) => n >= 1 && n <= 12)
+    const hasDaySequence =
+      numericOptions.length >= 28 &&
+      numericOptions.every((n) => n >= 1 && n <= 31)
+    const fourDigitYears = numericOptions.filter(
+      (n) => n >= 1900 && n <= new Date().getFullYear() + 10
+    )
+    const looksLikeMonthSelect = monthNameHits >= 6 || hasMonthSequence
+    const looksLikeDaySelect = hasDaySequence && !looksLikeMonthSelect
+    const looksLikeYearSelect = fourDigitYears.length >= 10
+
     // Fallback: inspect first disabled option text (often "Month", "Day", "Year")
     const firstDisabledOptionText = (() => {
       const firstDisabled = Array.from(select.options).find(
@@ -57,7 +93,10 @@ export function detectDOBFields(): DOBselect {
       dataTestId.includes("select-day") ||
       dataTestId.includes("select-month") ||
       dataTestId.includes("select-year") ||
-      ["day", "month", "year"].includes(firstDisabledOptionText)
+      ["day", "month", "year"].includes(firstDisabledOptionText) ||
+      looksLikeMonthSelect ||
+      looksLikeDaySelect ||
+      looksLikeYearSelect
 
     if (isDOBField) {
       // Priority check: Use numeric values first (most reliable)
@@ -72,6 +111,12 @@ export function detectDOBFields(): DOBselect {
       } else if (value === "1" && name.toLowerCase().includes("month")) {
         dobselect.month = select
       } else if (value === "1" && name.toLowerCase().includes("year")) {
+        dobselect.year = select
+      } else if (!dobselect.month && looksLikeMonthSelect) {
+        dobselect.month = select
+      } else if (!dobselect.day && looksLikeDaySelect) {
+        dobselect.day = select
+      } else if (!dobselect.year && looksLikeYearSelect) {
         dobselect.year = select
       } else if (
         !dobselect.day &&
