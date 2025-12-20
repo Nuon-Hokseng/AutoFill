@@ -6,10 +6,12 @@ const DOB_KEYWORDS: string[] = ([] as string[]).concat(
   ...Object.values(FIELD_KEYWORDS)
 )
 
+type DOBField = HTMLInputElement | HTMLSelectElement | HTMLElement
+
 export interface DOBselect {
-  day: HTMLInputElement | HTMLSelectElement | null
-  month: HTMLInputElement | HTMLSelectElement | null
-  year: HTMLInputElement | HTMLSelectElement | null
+  day: DOBField | null
+  month: DOBField | null
+  year: DOBField | null
 }
 
 //trigger event detection to select inputt form
@@ -24,6 +26,70 @@ function triggerSelectEvents(el: HTMLSelectElement, value: string): boolean {
     el.blur?.()
     return true
   }
+  el.blur?.()
+  return false
+}
+
+function triggerListboxSelection(
+  el: HTMLElement,
+  value: string,
+  kind: "day" | "month" | "year"
+): boolean {
+  const openCandidates: HTMLElement[] = []
+  openCandidates.push(el)
+  const toggle = el.querySelector<HTMLElement>("[aria-haspopup='listbox']")
+  if (toggle) openCandidates.push(toggle)
+
+  openCandidates.forEach((n) => n.click?.())
+
+  const options = Array.from(
+    el.querySelectorAll<HTMLElement>("[role='option'], li, [data-value]")
+  )
+
+  const monthNames = [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december"
+  ]
+
+  const numeric = parseInt(value, 10)
+  const monthIndex = Number.isNaN(numeric) ? -1 : numeric - 1
+  const padded = value.padStart(2, "0")
+
+  const candidates = (() => {
+    if (kind === "month") {
+      const names = monthIndex >= 0 ? [monthNames[monthIndex]] : []
+      return [value, padded, String(numeric), ...names].filter(Boolean)
+    }
+    return [value, padded, String(numeric)].filter(Boolean)
+  })().map((c) => c.toLowerCase())
+
+  const matchOption = options.find((opt) => {
+    const dataVal = (opt.getAttribute("data-value") || "").toLowerCase()
+    const val = (opt.getAttribute("value") || "").toLowerCase()
+    const text = (opt.textContent || "").trim().toLowerCase()
+
+    return candidates.some(
+      (cand) => cand === dataVal || cand === val || cand === text
+    )
+  })
+
+  if (matchOption) {
+    matchOption.click?.()
+    el.dispatchEvent(new Event("change", { bubbles: true }))
+    el.dispatchEvent(new Event("input", { bubbles: true }))
+    return true
+  }
+
   el.blur?.()
   return false
 }
@@ -164,8 +230,103 @@ export function detectDOBFields(): DOBselect {
     }
   }
 
+  // ====== DETECT LISTBOX DROPDOWNS (custom UI components) ======
+  const listboxes = Array.from(
+    document.querySelectorAll<HTMLElement>("[role='listbox']")
+  )
+  for (const listbox of listboxes) {
+    const name = listbox.getAttribute("name") || ""
+    const id = listbox.getAttribute("id") || ""
+    const ariaLabel = listbox.getAttribute("aria-label") || ""
+    const dataLabel = listbox.getAttribute("data-label") || ""
+    const labelText = [ariaLabel, dataLabel].filter(Boolean).join(" ")
+
+    const optionTexts = Array.from(
+      listbox.querySelectorAll<HTMLElement>("[role='option'], li")
+    ).map((o) =>
+      (o.textContent || o.getAttribute("data-value") || "").trim().toLowerCase()
+    )
+
+    const numericOptions = optionTexts
+      .map((t) => parseInt(t, 10))
+      .filter((n) => !Number.isNaN(n))
+    const monthNames = [
+      "january",
+      "february",
+      "march",
+      "april",
+      "may",
+      "june",
+      "july",
+      "august",
+      "september",
+      "october",
+      "november",
+      "december"
+    ]
+    const monthNameHits = optionTexts.filter((t) =>
+      monthNames.includes(t)
+    ).length
+    const hasMonthSequence =
+      numericOptions.length >= 12 &&
+      numericOptions.every((n) => n >= 1 && n <= 12)
+    const hasDaySequence =
+      numericOptions.length >= 28 &&
+      numericOptions.every((n) => n >= 1 && n <= 31)
+    const fourDigitYears = numericOptions.filter(
+      (n) => n >= 1900 && n <= new Date().getFullYear() + 10
+    )
+
+    const looksLikeMonth =
+      monthNameHits >= 6 ||
+      hasMonthSequence ||
+      matchesAny(labelText, ["month", "mm"]) ||
+      matchesAny(name, ["month"]) ||
+      matchesAny(id, ["month"])
+    const looksLikeDay =
+      hasDaySequence ||
+      matchesAny(labelText, ["day", "dd"]) ||
+      matchesAny(name, ["day"]) ||
+      matchesAny(id, ["day"])
+    const looksLikeYear =
+      fourDigitYears.length >= 10 ||
+      matchesAny(labelText, ["year", "yyyy"]) ||
+      matchesAny(name, ["year"]) ||
+      matchesAny(id, ["year"])
+
+    if (!dobselect.month && looksLikeMonth) {
+      dobselect.month = listbox
+    } else if (!dobselect.day && looksLikeDay) {
+      dobselect.day = listbox
+    } else if (!dobselect.year && looksLikeYear) {
+      dobselect.year = listbox
+    }
+  }
+
   // ====== DETECT INPUT FIELDS (NEW LOGIC) ======
   detectDOBInputs(dobselect, DOB_KEYWORDS)
+
+  // Extra fallback: simple day/month/year inputs by common ids/aria-labels
+  if (!dobselect.day) {
+    const fallbackDay = document.querySelector<HTMLInputElement>(
+      "input[name*='day'], input[id*='day'], input[aria-label='Day']"
+    )
+    if (fallbackDay) dobselect.day = fallbackDay
+  }
+
+  if (!dobselect.month) {
+    const fallbackMonth = document.querySelector<HTMLInputElement>(
+      "input[name*='month'], input[id*='month'], input[aria-label='Month']"
+    )
+    if (fallbackMonth) dobselect.month = fallbackMonth
+  }
+
+  if (!dobselect.year) {
+    const fallbackYear = document.querySelector<HTMLInputElement>(
+      "input[name*='year'], input[id*='year'], input[aria-label='Year']"
+    )
+    if (fallbackYear) dobselect.year = fallbackYear
+  }
 
   return dobselect
 }
@@ -186,7 +347,7 @@ export async function fillDOB(
       if (dobSelect.day instanceof HTMLInputElement) {
         triggerInputEvents(dobSelect.day, dayPadded)
         filledSomething = true
-      } else {
+      } else if (dobSelect.day instanceof HTMLSelectElement) {
         // Try raw then padded
         const successRaw = triggerSelectEvents(dobSelect.day, dayRaw)
         const successPadded = successRaw
@@ -209,6 +370,10 @@ export async function fillDOB(
         } else {
           filledSomething = true
         }
+      } else {
+        if (triggerListboxSelection(dobSelect.day, dayPadded, "day")) {
+          filledSomething = true
+        }
       }
     } catch (error) {
       console.error("Error filling DOB day field:", error)
@@ -225,7 +390,7 @@ export async function fillDOB(
         // Prefer padded so formats remain consistent
         triggerInputEvents(dobSelect.month, monthPadded)
         filledSomething = true
-      } else {
+      } else if (dobSelect.month instanceof HTMLSelectElement) {
         // Try candidates in order of likelihood for Apple ID: padded, raw, numeric
         const candidates = [monthPadded, monthRaw, monthNumeric]
         let success = false
@@ -273,6 +438,13 @@ export async function fillDOB(
           }
         }
         if (success) filledSomething = true
+      } else {
+        if (
+          triggerListboxSelection(dobSelect.month, monthPadded, "month") ||
+          triggerListboxSelection(dobSelect.month, monthRaw, "month")
+        ) {
+          filledSomething = true
+        }
       }
     } catch (error) {
       console.error("Error filling DOB month field:", error)
@@ -283,8 +455,10 @@ export async function fillDOB(
     try {
       if (dobSelect.year instanceof HTMLInputElement) {
         triggerInputEvents(dobSelect.year, year)
-      } else {
+      } else if (dobSelect.year instanceof HTMLSelectElement) {
         triggerSelectEvents(dobSelect.year, year)
+      } else {
+        triggerListboxSelection(dobSelect.year, year, "year")
       }
       filledSomething = true
     } catch (error) {
