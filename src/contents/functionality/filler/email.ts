@@ -6,9 +6,8 @@ import {
   matchesAny
 } from "../Detector/utils"
 
-const EMAIL_KEYWORDS: string[] = ([] as string[]).concat(
-  ...Object.values(FIELD_KEYWORDS)
-)
+// Narrow to email-specific keywords to avoid overmatching to names/usernames
+const EMAIL_KEYWORDS: string[] = FIELD_KEYWORDS.email
 
 export function detectEmailField(
   inputs: HTMLInputElement[]
@@ -32,6 +31,11 @@ export function detectEmailField(
         el.getAttribute("id"),
         el.getAttribute("placeholder"),
         el.getAttribute("aria-label"),
+        el.getAttribute("autocomplete"),
+        el.getAttribute("data-test"),
+        el.getAttribute("data-testid"),
+        el.getAttribute("data-field"),
+        el.getAttribute("data-name"),
         getAssociatedLabelText(el)
       ]
         .filter(Boolean)
