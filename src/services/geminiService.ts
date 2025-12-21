@@ -268,11 +268,10 @@ async function initializeCache(attemptNumber: number = 1): Promise<void> {
           usingBackup: false
         },
         () => {
-          if (chrome.runtime.lastError) {
-            console.error(
-              "Error saving generated data to storage:",
-              chrome.runtime.lastError
-            )
+          // Check and clear runtime.lastError
+          const lastError = chrome.runtime.lastError
+          if (lastError) {
+            console.debug("Storage error (handled):", lastError?.message)
           }
         }
       )
@@ -294,11 +293,10 @@ async function initializeCache(attemptNumber: number = 1): Promise<void> {
               usingBackup: true
             },
             () => {
-              if (chrome.runtime.lastError) {
-                console.error(
-                  "Error saving backup data to storage:",
-                  chrome.runtime.lastError
-                )
+              // Check and clear runtime.lastError
+              const lastError = chrome.runtime.lastError
+              if (lastError) {
+                console.debug("Storage error (handled):", lastError?.message)
               }
             }
           )

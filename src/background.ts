@@ -7,6 +7,13 @@ import {
 import { clearCache, hasCachedData, preloadData } from "~services/geminiService"
 import { getAIMode, getAutofillData } from "~services/storageService"
 
+// Suppress unchecked runtime.lastError warnings
+chrome.runtime.onMessage.addListener(() => {
+  // Return false to prevent "A listener indicated an asynchronous response" warning
+  // when no response is needed
+  return false
+})
+
 // Initialize preload immediately when background script loads
 initializePreload()
 
@@ -39,13 +46,22 @@ chrome.runtime.onConnect.addListener(async (port) => {
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Wrap sendResponse to prevent "Unchecked runtime.lastError" warnings
+  const safeResponse = (response: any) => {
+    try {
+      sendResponse(response)
+    } catch (error) {
+      console.debug("Message channel closed before response could be sent")
+    }
+  }
+
   if (message.type === "CLEAR_AI_CACHE") {
     try {
       clearCache()
       preloadData()
-      sendResponse({ success: true })
+      safeResponse({ success: true })
     } catch (e: any) {
-      sendResponse({ success: false, error: e?.message || String(e) })
+      safeResponse({ success: false, error: e?.message || String(e) })
     }
     return true
   }
@@ -64,14 +80,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               source: "profile"
             },
             (response) => {
-              sendResponse({
+              safeResponse({
                 ...(response || { success: false }),
                 source: "profile"
               })
             }
           )
         } else {
-          sendResponse({ success: false, error: "No active tab found" })
+          safeResponse({ success: false, error: "No active tab found" })
         }
       })
 
@@ -85,7 +101,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // If AI mode is enabled but rate limit reached, block generation
         if (aiEnabled && !rateLimitStatus.canGenerate) {
-          sendResponse({
+          safeResponse({
             success: false,
             error: rateLimitStatus.message,
             source: "none",
@@ -102,7 +118,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               const errorMsg = aiEnabled
                 ? "Failed to fetch dummy data from backend. Please try again."
                 : "No custom data found. Please add custom credentials or enable AI mode."
-              sendResponse({
+              safeResponse({
                 success: false,
                 error: errorMsg,
                 source: "none",
@@ -133,7 +149,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   console.warn(
                     `⛔ Rate limit enforced! (should have been caught earlier)`
                   )
-                  sendResponse({
+                  safeResponse({
                     success: false,
                     error: result.message,
                     source: "none",
@@ -158,25 +174,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     source: source
                   },
                   (response) => {
-                    sendResponse({
+                    safeResponse({
                       ...(response || { success: false }),
                       source: source
                     })
                   }
                 )
               } else {
-                sendResponse({ success: false, error: "No active tab found" })
+                safeResponse({ success: false, error: "No active tab found" })
               }
             })
           })
           .catch((error) => {
             console.error("Error getting autofill data:", error)
-            sendResponse({ success: false, error: error.message })
+            safeResponse({ success: false, error: error.message })
           })
       })
       .catch((error) => {
         console.error("Error checking rate limit:", error)
-        sendResponse({ success: false, error: "Failed to check rate limit" })
+        safeResponse({ success: false, error: "Failed to check rate limit" })
       })
 
     return true

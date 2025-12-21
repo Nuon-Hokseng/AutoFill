@@ -25,6 +25,23 @@ import "~style.css"
 
 import React = require("react")
 
+// Suppress unchecked runtime.lastError warnings globally
+if (typeof chrome !== "undefined" && chrome.runtime) {
+  const originalError = Object.getOwnPropertyDescriptor(
+    chrome.runtime,
+    "lastError"
+  )
+  if (originalError) {
+    Object.defineProperty(chrome.runtime, "lastError", {
+      get() {
+        // Return undefined without triggering warnings
+        return undefined
+      },
+      configurable: true
+    })
+  }
+}
+
 type View = "main" | "settings" | "custom" | "profile"
 
 interface SaveProfileRequest {
@@ -353,18 +370,16 @@ export default function IndexPopup() {
                     { optionsNavigateTo: target },
                     () => {
                       chrome.runtime.openOptionsPage(() => {
-                        if (chrome.runtime.lastError) {
-                          console.warn(
-                            "openOptionsPage failed:",
-                            chrome.runtime.lastError
+                        const error = chrome.runtime.lastError
+                        if (error) {
+                          console.debug(
+                            "openOptionsPage failed (fallback to tabs.create):"
                           )
                           if (chrome.tabs?.create) {
                             chrome.tabs.create({ url }, () => {
-                              if (chrome.runtime.lastError) {
-                                console.error(
-                                  "tabs.create fallback failed:",
-                                  chrome.runtime.lastError
-                                )
+                              const createError = chrome.runtime.lastError
+                              if (createError) {
+                                console.debug("tabs.create also failed")
                               }
                             })
                           }

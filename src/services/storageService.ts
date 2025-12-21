@@ -60,6 +60,8 @@ export async function setAIMode(
 ): Promise<{ success: boolean }> {
   return new Promise((resolve) => {
     chrome.storage.local.set({ aiModeEnabled: enabled }, () => {
+      // Clear any previous errors by checking runtime.lastError
+      chrome.runtime.lastError // Silently check and discard
       if (chrome.runtime.lastError) {
         resolve({ success: false })
       } else {
@@ -116,8 +118,10 @@ export async function saveCustomData(
 ): Promise<{ success: boolean }> {
   return new Promise((resolve) => {
     chrome.storage.local.set({ autofillData: data }, () => {
-      if (chrome.runtime.lastError) {
-        console.error("Error saving custom data:", chrome.runtime.lastError)
+      // Check and clear runtime.lastError
+      const lastError = chrome.runtime.lastError
+      if (lastError) {
+        console.debug("Storage error (handled):", lastError?.message)
         resolve({ success: false })
       } else {
         resolve({ success: true })
@@ -132,8 +136,10 @@ export async function saveCustomData(
 export async function clearCustomData(): Promise<{ success: boolean }> {
   return new Promise((resolve) => {
     chrome.storage.local.remove("autofillData", () => {
-      if (chrome.runtime.lastError) {
-        console.error("Error clearing custom data:", chrome.runtime.lastError)
+      // Check and clear runtime.lastError
+      const lastError = chrome.runtime.lastError
+      if (lastError) {
+        console.debug("Storage error (handled):", lastError?.message)
         resolve({ success: false })
       } else {
         resolve({ success: true })
@@ -174,8 +180,10 @@ export async function setGeminiApiKey(
 ): Promise<{ success: boolean }> {
   return new Promise((resolve) => {
     chrome.storage.local.set({ geminiApiKey: key }, () => {
-      if (chrome.runtime.lastError) {
-        console.error("Error saving Gemini API key:", chrome.runtime.lastError)
+      // Check and clear runtime.lastError
+      const lastError = chrome.runtime.lastError
+      if (lastError) {
+        console.debug("Storage error (handled):", lastError?.message)
         resolve({ success: false })
       } else {
         resolve({ success: true })
@@ -187,11 +195,10 @@ export async function setGeminiApiKey(
 export async function clearGeminiApiKey(): Promise<{ success: boolean }> {
   return new Promise((resolve) => {
     chrome.storage.local.remove("geminiApiKey", () => {
-      if (chrome.runtime.lastError) {
-        console.error(
-          "Error clearing Gemini API key:",
-          chrome.runtime.lastError
-        )
+      // Check and clear runtime.lastError
+      const lastError = chrome.runtime.lastError
+      if (lastError) {
+        console.debug("Storage error (handled):", lastError?.message)
         resolve({ success: false })
       } else {
         resolve({ success: true })

@@ -702,6 +702,15 @@ async function waitForElements(maxWait = 5000): Promise<boolean> {
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Wrap sendResponse to prevent "Unchecked runtime.lastError" warnings
+  const safeResponse = (response: any) => {
+    try {
+      sendResponse(response)
+    } catch (error) {
+      console.debug("Message channel closed before response could be sent")
+    }
+  }
+
   if (msg?.type === "AUTOFILL_CREDENTIALS") {
     const data = msg.data
     const source = msg.source || "unknown"
@@ -710,7 +719,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       waitForElements(3000).then(() => {
         setTimeout(() => {
           fillCredentials(data).then((result) => {
-            sendResponse({
+            safeResponse({
               success: true,
               source: source,
               ...(result || {})
@@ -719,11 +728,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }, 200)
       })
     } else {
-      sendResponse({ success: false, error: "No data" })
+      safeResponse({ success: false, error: "No data" })
     }
 
     return true
   }
 
-  sendResponse({ success: false, error: "Unknown message type" })
+  safeResponse({ success: false, error: "Unknown message type" })
 })
