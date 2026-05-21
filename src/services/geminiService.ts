@@ -1,3 +1,5 @@
+import { BACKUP_DUMMY_POOL, generateRandomPassword } from "./dummyPool"
+
 // Service for generating dummy data via backend API
 
 // Backend endpoint base
@@ -6,25 +8,21 @@ const GENERATE_ENDPOINT = `${BACKEND_BASE_URL}/generate`
 
 export interface AutofillData {
   // Basic Info
-  title?: string
-  firstname: string
+  firstname?: string
   middlename?: string
-  middleinitial?: string
-  lastname: string
+  lastname?: string
   fullname?: string
 
   // Contact Info
-  email: string
-  username: string
-  password: string
+  email?: string
+  username?: string
+  password?: string
 
   // Personal Details
-  gender: string
-  dob: string
+  gender?: string
+  dob?: string
   age?: string
   birthplace?: string
-  ssn?: string
-  driverslicense?: string
 
   // Company/Work
   company?: string
@@ -41,27 +39,10 @@ export interface AutofillData {
 
   // Phone Numbers
   homephone?: string
-  workphone?: string
-  fax?: string
   cellphone?: string
 
   // Web
   website?: string
-  userid?: string
-
-  // Payment Info
-  creditcardtype?: string
-  creditcardnumber?: string
-  cardverificationcode?: string
-  cardexpiration?: string
-  cardusername?: string
-  cardissuingbank?: string
-  cardcustomerservicephone?: string
-
-  // Additional
-  income?: string
-  custommessage?: string
-  comments?: string
 }
 
 // Backwards-compatible alias for existing imports/usages
@@ -90,31 +71,21 @@ const normalizeAutofill = (input: any): AutofillData | null => {
 
   const data: AutofillData = {
     // Basic
-    title: val(pick("title")),
-    firstname:
-      val(pick("firstname", "firstName", "first_name", "given_name")) || "",
+    firstname: val(pick("firstname", "firstName", "first_name", "given_name")),
     middlename: val(pick("middlename", "middleName", "middle_name")),
-    middleinitial: val(
-      pick("middleinitial", "middleInitial", "middle_initial")
-    ),
-    lastname:
-      val(pick("lastname", "lastName", "last_name", "family_name")) || "",
+    lastname: val(pick("lastname", "lastName", "last_name", "family_name")),
     fullname: val(pick("fullname", "fullName", "full_name")),
 
     // Account
-    email: val(pick("email", "emailAddress", "email_address")) || "",
-    username: val(pick("username", "userName", "user_name")) || "",
-    password: val(pick("password", "pass", "pwd")) || "",
+    email: val(pick("email", "emailAddress", "email_address")),
+    username: val(pick("username", "userName", "user_name")),
+    password: val(pick("password", "pass", "pwd")),
 
     // Personal
-    gender: val(pick("gender", "sex")) || "",
-    dob: val(pick("dob", "dateOfBirth", "birth_date", "birthDate")) || "",
+    gender: val(pick("gender", "sex")),
+    dob: val(pick("dob", "dateOfBirth", "birth_date", "birthDate")),
     age: val(pick("age")),
     birthplace: val(pick("birthplace", "birth_place", "birthPlace")),
-    ssn: val(pick("ssn", "social", "social_security")),
-    driverslicense: val(
-      pick("driverslicense", "driverLicense", "driver_license")
-    ),
 
     // Company
     company: val(pick("company")),
@@ -131,67 +102,25 @@ const normalizeAutofill = (input: any): AutofillData | null => {
 
     // Phones
     homephone: val(pick("homephone", "home_phone")),
-    workphone: val(pick("workphone", "work_phone")),
-    fax: val(pick("fax")),
     cellphone: val(
       pick("cellphone", "cell_phone", "phone", "phone_number", "phoneNumber")
     ),
 
     // Web
-    website: val(pick("website", "url")),
-    userid: val(pick("userid", "userId", "user_id")),
-
-    // Payment
-    creditcardtype: val(pick("creditcardtype", "card_type", "cardType")),
-    creditcardnumber: val(
-      pick("creditcardnumber", "card_number", "cardNumber")
-    ),
-    cardverificationcode: val(
-      pick("cardverificationcode", "cvv", "cvc", "card_verification_code")
-    ),
-    cardexpiration: val(
-      pick("cardexpiration", "card_expiration", "expiry", "expiration")
-    ),
-    cardusername: val(pick("cardusername", "card_name", "name_on_card")),
-    cardissuingbank: val(pick("cardissuingbank", "issuing_bank")),
-    cardcustomerservicephone: val(
-      pick(
-        "cardcustomerservicephone",
-        "customer_service",
-        "customer_service_phone"
-      )
-    ),
-
-    // Other
-    income: val(pick("income", "annual_income")),
-    custommessage: val(pick("custommessage", "message")),
-    comments: val(pick("comments", "note", "notes"))
+    website: val(pick("website", "url"))
   }
 
-  // Validate required after normalization
-  const required: (keyof AutofillData)[] = [
-    "firstname",
-    "lastname",
-    "username",
-    "email",
-    "password",
-    "gender",
-    "dob"
-  ]
-  const ok = required.every(
-    (k) => typeof data[k] === "string" && (data[k] as string).length > 0
-  )
-  if (!ok) {
-    const missing = required.filter(
-      (k) => !data[k] || (data[k] as string).length === 0
-    )
-    console.error("❌ Validation failed. Missing required fields:", missing)
-    console.log(
-      "🔍 Normalized data sample:",
-      JSON.stringify(data).slice(0, 300)
-    )
+  // Basic validation - at least some core fields should be present
+  const hasMinimumData =
+    data.firstname || data.lastname || data.email || data.username
+
+  if (!hasMinimumData) {
+    console.error("❌ Validation failed. No core fields present")
+
+    return null
   }
-  return ok ? data : null
+
+  return data
 }
 
 // 1) Fetch from backend API and return parsed output
@@ -245,12 +174,6 @@ export async function fetchAutofillData(): Promise<AutofillData | null> {
     const raw =
       json && typeof json === "object" && "output" in json ? json.output : json
 
-    console.log("📥 Backend response received:", {
-      hasOutput: !!json?.output,
-      sampleKeys:
-        raw && typeof raw === "object" ? Object.keys(raw).slice(0, 10) : []
-    })
-
     const normalized = normalizeAutofill(raw)
     if (!normalized) {
       try {
@@ -300,154 +223,13 @@ export async function generateDummyData(
   return null
 }
 
-// Helper to generate random password
-const generateRandomPassword = (): string => {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*"
-  const length = 12 + Math.floor(Math.random() * 5) // 12-16 chars
-  let pwd = ""
-  for (let i = 0; i < length; i++) {
-    pwd += chars[Math.floor(Math.random() * chars.length)]
-  }
-  return pwd
-}
-
-// Backup dummy data pool for instant use while AI generates
-const BACKUP_DUMMY_POOL: AutofillData[] = [
-  {
-    title: "Mr",
-    firstname: "Alex",
-    middlename: "Jordan",
-    middleinitial: "J",
-    lastname: "Chen",
-    fullname: "Alex Jordan Chen",
-    username: "alexchen2024",
-    email: "alex.chen@example.com",
-    password: generateRandomPassword(),
-    gender: "2",
-    dob: "15-03-1992",
-    age: "32",
-    birthplace: "Singapore",
-    ssn: "456-78-9012",
-    driverslicense: "SG8765432",
-    company: "Tech Solutions Pte Ltd",
-    position: "Software Developer",
-    address1: "45 Marina Boulevard",
-    address2: "Unit 12-03",
-    city: "Singapore",
-    state: "Central Region",
-    zipcode: "018956",
-    postalcode: "018956",
-    country: "Singapore",
-    homephone: "+65 6234-5678",
-    workphone: "+65 6345-6789",
-    fax: "+65 6456-7890",
-    cellphone: "+65 9123-4567",
-    website: "https://alexchen.dev",
-    userid: "alexchen2024",
-    creditcardtype: "Visa",
-    creditcardnumber: "4532123456789012",
-    cardverificationcode: "789",
-    cardexpiration: "06/27",
-    cardusername: "Alex Jordan Chen",
-    cardissuingbank: "DBS Bank",
-    cardcustomerservicephone: "+65 1800-111-1111",
-    income: "78000",
-    custommessage: "Innovation through code",
-    comments: "Passionate about web development"
-  },
-  {
-    title: "Ms",
-    firstname: "Maria",
-    middlename: "Sofia",
-    middleinitial: "S",
-    lastname: "Garcia",
-    fullname: "Maria Sofia Garcia",
-    username: "mariagarcia89",
-    email: "maria.garcia@ejemplo.es",
-    password: generateRandomPassword(),
-    gender: "1",
-    dob: "22-08-1989",
-    age: "35",
-    birthplace: "Madrid, Spain",
-    ssn: "789-01-2345",
-    driverslicense: "ES1234567890",
-    company: "Innovación Digital SA",
-    position: "Project Manager",
-    address1: "Calle Gran Via 28",
-    address2: "Piso 5A",
-    city: "Madrid",
-    state: "Madrid",
-    zipcode: "28013",
-    postalcode: "28013",
-    country: "Spain",
-    homephone: "+34 91 123 4567",
-    workphone: "+34 91 234 5678",
-    fax: "+34 91 345 6789",
-    cellphone: "+34 612 345 678",
-    website: "https://mariagarcia.es",
-    userid: "mariagarcia89",
-    creditcardtype: "Mastercard",
-    creditcardnumber: "5412345678901234",
-    cardverificationcode: "456",
-    cardexpiration: "09/28",
-    cardusername: "Maria Sofia Garcia",
-    cardissuingbank: "Banco Santander",
-    cardcustomerservicephone: "+34 900 123 123",
-    income: "65000",
-    custommessage: "Leading with purpose",
-    comments: "Loves traveling and photography"
-  },
-  {
-    title: "Dr",
-    firstname: "Yuki",
-    middlename: "Haruto",
-    middleinitial: "H",
-    lastname: "Tanaka",
-    fullname: "Yuki Haruto Tanaka",
-    username: "yukitanaka",
-    email: "yuki.tanaka@example.jp",
-    password: generateRandomPassword(),
-    gender: "2",
-    dob: "10-11-1985",
-    age: "39",
-    birthplace: "Tokyo, Japan",
-    ssn: "234-56-7890",
-    driverslicense: "JP9876543210",
-    company: "Tokyo Medical Center",
-    position: "Senior Physician",
-    address1: "1-2-3 Shibuya",
-    address2: "Apt 801",
-    city: "Tokyo",
-    state: "Tokyo",
-    zipcode: "150-0002",
-    postalcode: "150-0002",
-    country: "Japan",
-    homephone: "+81 3-1234-5678",
-    workphone: "+81 3-2345-6789",
-    fax: "+81 3-3456-7890",
-    cellphone: "+81 90-1234-5678",
-    website: "https://yukitanaka.jp",
-    userid: "yukitanaka",
-    creditcardtype: "Amex",
-    creditcardnumber: "378282246310005",
-    cardverificationcode: "1234",
-    cardexpiration: "12/26",
-    cardusername: "Yuki Haruto Tanaka",
-    cardissuingbank: "Mitsubishi UFJ Bank",
-    cardcustomerservicephone: "+81 120-123-456",
-    income: "120000",
-    custommessage: "Healing with compassion",
-    comments: "Enjoys classical music and golf"
-  }
-]
-
 // Track if we're using backup data
 let usingBackupData = false
 
 // Simple cache system with single entry and 1 hour auto-refresh
 let cachedData: DummyUserData | null = null
 let cacheTimestamp: number = 0
-const CACHE_REFRESH_DURATION = 60 * 60 * 1000
+const CACHE_REFRESH_DURATION = 30 * 60 * 1000
 let refreshTimer: NodeJS.Timeout | null = null
 let isGenerating = false
 
@@ -590,9 +372,6 @@ export async function getCachedOrGenerateData(): Promise<DummyUserData | null> {
         usingBackupData = stored.usingBackup || false
         scheduleCacheRefresh()
         const dataType = usingBackupData ? "backup" : "AI-generated"
-        console.log(
-          `✅ Restored ${dataType} data from storage (age: ${Math.floor(storedAge / 1000)}s)`
-        )
       }
     }
   }
@@ -672,15 +451,4 @@ export function clearCache(): void {
   )
 
   console.log("🗑️ Cache cleared")
-}
-
-// Get cache status for debugging
-export function getCacheStatus(): {
-  hasData: boolean
-  age: number
-} {
-  return {
-    hasData: cachedData !== null,
-    age: Date.now() - cacheTimestamp
-  }
 }

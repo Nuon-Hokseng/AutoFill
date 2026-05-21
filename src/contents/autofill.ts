@@ -6,29 +6,18 @@ import {
   detectAddressLine2Field,
   detectAgeField,
   detectBirthPlaceField,
-  detectCardExpirationField,
-  detectCardVerificationCodeField,
   detectCellPhoneField,
   detectCityField,
-  detectCommentsField,
   detectCompanyField,
   detectCountryField,
-  detectCreditCardNumberField,
   detectDOBFields,
-  detectDriverLicenseField,
-  detectFaxField,
   detectFullNameField,
   detectGenderFields,
   detectHomePhoneField,
-  detectIncomeField,
   detectMiddleNameField,
   detectPositionField,
-  detectSSNField,
   detectStateField,
-  // New field detectors
-  detectTitleField,
   detectWebsiteField,
-  detectWorkPhoneField,
   detectZipcodeField,
   fillAddressLine,
   fillCompany,
@@ -42,7 +31,6 @@ import {
   fillPassword,
   fillPhoneField,
   fillPosition,
-  fillTitle,
   fillUsername,
   fillWebsite,
   genericFill,
@@ -63,9 +51,58 @@ function collectInputsDeep(
 ): (HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)[] {
   const nodes: (HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)[] =
     []
-  root.querySelectorAll("input, textarea, select").forEach((el) => {
-    nodes.push(el as any)
+
+  const isCaptchaField = (el: Element): boolean => {
+    const attrs = [
+      el.getAttribute("name") || "",
+      el.getAttribute("id") || "",
+      el.getAttribute("placeholder") || "",
+      el.getAttribute("aria-label") || "",
+      el.getAttribute("aria-labelledby") || ""
+    ]
+      .join(" ")
+      .toLowerCase()
+
+    // Common captcha indicators
+    const patterns = [
+      "captcha",
+      "recaptcha",
+      "re-captcha",
+      "g-recaptcha",
+      "g-recaptcha-response",
+      "hcaptcha",
+      "h-captcha",
+      "cf-turnstile",
+      "turnstile"
+    ]
+
+    if (patterns.some((p) => attrs.includes(p))) return true
+
+    // Class-based detection
+    const classList = Array.from(el.classList || []).map((c) => c.toLowerCase())
+    if (
+      classList.some((c) =>
+        ["g-recaptcha", "g-recaptcha-response", "h-captcha", "captcha"].some(
+          (p) => c.includes(p)
+        )
+      )
+    )
+      return true
+
+    return false
+  }
+
+  const allElements = root.querySelectorAll("input, textarea, select")
+  let captchaCount = 0
+
+  allElements.forEach((el) => {
+    if (isCaptchaField(el)) {
+      captchaCount++
+    } else {
+      nodes.push(el as any)
+    }
   })
+
   // Traverse elements with shadow roots
   root.querySelectorAll("*").forEach((el) => {
     const anyEl = el as any
@@ -100,7 +137,6 @@ function detectCredentialFields() {
   const dobSelect = detectDOBFields()
 
   // Detect new fields
-  const titleEl = detectTitleField(inputs)
   const middlenameEl = detectMiddleNameField(inputs)
   const fullnameEl = detectFullNameField(inputs)
   const companyEl = detectCompanyField(inputs)
@@ -113,19 +149,10 @@ function detectCredentialFields() {
   const countryEl = detectCountryField(inputs)
   const phoneEl = scored.phone as HTMLInputElement | null // Generic phone field
   const homephoneEl = detectHomePhoneField(inputs)
-  const workphoneEl = detectWorkPhoneField(inputs)
-  const faxEl = detectFaxField(inputs)
   const cellphoneEl = detectCellPhoneField(inputs)
   const websiteEl = detectWebsiteField(inputs)
-  const creditcardnumberEl = detectCreditCardNumberField(inputs)
-  const cvvEl = detectCardVerificationCodeField(inputs)
-  const cardexpirationEl = detectCardExpirationField(inputs)
-  const ssnEl = detectSSNField(inputs)
-  const driverslicenseEl = detectDriverLicenseField(inputs)
   const ageEl = detectAgeField(inputs)
   const birthplaceEl = detectBirthPlaceField(inputs)
-  const incomeEl = detectIncomeField(inputs)
-  const commentsEl = detectCommentsField(inputs)
 
   return {
     emailEl,
@@ -137,7 +164,6 @@ function detectCredentialFields() {
     genderRadios,
     dobSelect,
     // New fields
-    titleEl,
     middlenameEl,
     fullnameEl,
     companyEl,
@@ -150,19 +176,40 @@ function detectCredentialFields() {
     countryEl,
     phoneEl,
     homephoneEl,
-    workphoneEl,
-    faxEl,
     cellphoneEl,
     websiteEl,
-    creditcardnumberEl,
-    cvvEl,
-    cardexpirationEl,
-    ssnEl,
-    driverslicenseEl,
     ageEl,
-    birthplaceEl,
-    incomeEl,
-    commentsEl
+    birthplaceEl
+  }
+}
+
+// Fallback: count visible inputs when heuristic detection fails
+function countVisibleInputs(): number {
+  try {
+    const all = document.querySelectorAll<HTMLInputElement>(
+      'input:not([type="hidden"]), textarea'
+    )
+    let count = 0
+    for (const el of all) {
+      if (
+        el.offsetParent !== null &&
+        el.type !== "submit" &&
+        el.type !== "button"
+      ) {
+        const type = el.type?.toLowerCase() || "text"
+        if (
+          ["text", "email", "password", "tel", "search", "url"].includes(
+            type
+          ) ||
+          el.tagName === "TEXTAREA"
+        ) {
+          count++
+        }
+      }
+    }
+    return count
+  } catch {
+    return 0
   }
 }
 
@@ -276,7 +323,6 @@ async function fillCredentials(credentials: {
   gender?: string
   dob?: string
   // New fields
-  title?: string
   middlename?: string
   fullname?: string
   company?: string
@@ -288,25 +334,32 @@ async function fillCredentials(credentials: {
   zipcode?: string
   country?: string
   homephone?: string
-  workphone?: string
-  fax?: string
   cellphone?: string
   website?: string
-  creditcardnumber?: string
-  cardverificationcode?: string
-  cardexpiration?: string
-  ssn?: string
-  driverslicense?: string
   age?: string
   birthplace?: string
-  income?: string
-  comments?: string
 }) {
   try {
     // Clear previous tracking
     Object.keys(filledFieldsTracker).forEach((key) => {
       delete filledFieldsTracker[key]
     })
+
+    // Explicitly skip reCAPTCHA response fields (cannot legally be autofilled)
+    const recaptchaSelectors = [
+      'textarea[name="g-recaptcha-response"]',
+      'textarea[id="g-recaptcha-response"]',
+      'input[name="g-recaptcha-response"]',
+      'input[id="g-recaptcha-response"]',
+      ".g-recaptcha-response"
+    ]
+    const recaptchaFields = Array.from(
+      new Set(
+        recaptchaSelectors.flatMap((sel) =>
+          Array.from(document.querySelectorAll(sel))
+        )
+      )
+    ) as (HTMLInputElement | HTMLTextAreaElement)[]
 
     // Prefer a fresh detection pass (throttled) if available, otherwise fallback
     const detection = ensureFreshDetection() || detectCredentialFields()
@@ -320,7 +373,6 @@ async function fillCredentials(credentials: {
       lastnameEL,
       genderRadios,
       dobSelect,
-      titleEl,
       middlenameEl,
       fullnameEl,
       companyEl,
@@ -333,19 +385,10 @@ async function fillCredentials(credentials: {
       countryEl,
       phoneEl,
       homephoneEl,
-      workphoneEl,
-      faxEl,
       cellphoneEl,
       websiteEl,
-      creditcardnumberEl,
-      cvvEl,
-      cardexpirationEl,
-      ssnEl,
-      driverslicenseEl,
       ageEl,
-      birthplaceEl,
-      incomeEl,
-      commentsEl
+      birthplaceEl
     } = detection
 
     let fieldsCount = 0
@@ -357,7 +400,6 @@ async function fillCredentials(credentials: {
       usernameEl,
       emailEl,
       passwordEl,
-      titleEl,
       middlenameEl,
       fullnameEl,
       companyEl,
@@ -369,19 +411,10 @@ async function fillCredentials(credentials: {
       zipcodeEl,
       countryEl,
       homephoneEl,
-      workphoneEl,
-      faxEl,
       cellphoneEl,
       websiteEl,
-      creditcardnumberEl,
-      cvvEl,
-      cardexpirationEl,
-      ssnEl,
-      driverslicenseEl,
       ageEl,
       birthplaceEl,
-      incomeEl,
-      commentsEl,
       genderRadios &&
         (genderRadios.male || genderRadios.female || genderRadios.custom),
       dobSelect && (dobSelect.day || dobSelect.month || dobSelect.year)
@@ -389,14 +422,6 @@ async function fillCredentials(credentials: {
     const totalDetected = detectedElements.filter(Boolean).length
 
     // Fill fields using specialized functions
-    if (titleEl && credentials.title) {
-      const success = await fillTitle(titleEl, credentials.title)
-      if (success) {
-        fieldsCount++
-        filledFieldsTracker["title"] = credentials.title
-      }
-    }
-
     // Fill username FIRST to prevent firstname from taking username fields
     if (usernameEl && credentials.username) {
       const success = await fillUsername(usernameEl, credentials.username)
@@ -446,7 +471,12 @@ async function fillCredentials(credentials: {
       }
     }
 
-    if (passwordEl && credentials.password) {
+    if (
+      passwordEl &&
+      credentials.password &&
+      !recaptchaFields.includes(passwordEl as any) &&
+      !passwordEl.closest(".g-recaptcha, .h-captcha, .cf-turnstile")
+    ) {
       const success = await fillPassword(passwordEl, credentials.password)
       if (success) {
         fieldsCount++
@@ -566,22 +596,6 @@ async function fillCredentials(credentials: {
       }
     }
 
-    if (workphoneEl && credentials.workphone) {
-      const success = await fillPhoneField(workphoneEl, credentials.workphone)
-      if (success) {
-        fieldsCount++
-        filledFieldsTracker["workphone"] = credentials.workphone
-      }
-    }
-
-    if (faxEl && credentials.fax) {
-      const success = await fillPhoneField(faxEl, credentials.fax)
-      if (success) {
-        fieldsCount++
-        filledFieldsTracker["fax"] = credentials.fax
-      }
-    }
-
     if (cellphoneEl && credentials.cellphone) {
       const success = await fillPhoneField(cellphoneEl, credentials.cellphone)
       if (success) {
@@ -596,42 +610,7 @@ async function fillCredentials(credentials: {
       if (success) fieldsCount++
     }
 
-    // Payment fields
-    if (creditcardnumberEl && credentials.creditcardnumber) {
-      const success = await genericFill(
-        creditcardnumberEl,
-        credentials.creditcardnumber
-      )
-      if (success) fieldsCount++
-    }
-
-    if (cvvEl && credentials.cardverificationcode) {
-      const success = await genericFill(cvvEl, credentials.cardverificationcode)
-      if (success) fieldsCount++
-    }
-
-    if (cardexpirationEl && credentials.cardexpiration) {
-      const success = await genericFill(
-        cardexpirationEl,
-        credentials.cardexpiration
-      )
-      if (success) fieldsCount++
-    }
-
-    // Personal ID fields
-    if (ssnEl && credentials.ssn) {
-      const success = await genericFill(ssnEl, credentials.ssn)
-      if (success) fieldsCount++
-    }
-
-    if (driverslicenseEl && credentials.driverslicense) {
-      const success = await genericFill(
-        driverslicenseEl,
-        credentials.driverslicense
-      )
-      if (success) fieldsCount++
-    }
-
+    // Personal detail fields
     if (ageEl && credentials.age) {
       const success = await genericFill(ageEl, credentials.age)
       if (success) fieldsCount++
@@ -639,17 +618,6 @@ async function fillCredentials(credentials: {
 
     if (birthplaceEl && credentials.birthplace) {
       const success = await genericFill(birthplaceEl, credentials.birthplace)
-      if (success) fieldsCount++
-    }
-
-    // Additional fields
-    if (incomeEl && credentials.income) {
-      const success = await genericFill(incomeEl, credentials.income)
-      if (success) fieldsCount++
-    }
-
-    if (commentsEl && credentials.comments) {
-      const success = await genericFill(commentsEl, credentials.comments)
       if (success) fieldsCount++
     }
 
@@ -668,16 +636,9 @@ async function fillCredentials(credentials: {
 
     // Show save profile modal if fields were filled
     const actualFilledCount = Object.keys(filledFieldsTracker).length
-    console.log("📊 Autofill complete:", {
-      fieldsCount,
-      actualFilledCount,
-      fields: Object.keys(filledFieldsTracker)
-    })
 
     if (actualFilledCount > 0) {
-      console.log("✅ Condition met, will notify popup in 500ms...")
       setTimeout(() => {
-        console.log("⏰ Timeout complete, notifying popup...")
         notifyPopupSaveProfile(
           filledFieldsTracker,
           actualFilledCount,
@@ -688,9 +649,27 @@ async function fillCredentials(credentials: {
       console.log("❌ No fields tracked for profile saving")
     }
 
-    return { filled: fieldsCount, total: totalDetected }
+    // Use fallback counting when heuristic detection fails
+    let finalTotal = totalDetected
+    if (finalTotal === 0) {
+      const fallback = countVisibleInputs()
+      finalTotal = fallback > 0 ? fallback : fieldsCount
+    }
+    // Ensure we never report 0 total when fields were actually filled
+    if (finalTotal === 0 && fieldsCount > 0) {
+      finalTotal = fieldsCount
+    }
+    const result = { filled: fieldsCount, total: finalTotal }
+
+    // Safety check: if both are 0 but we have tracked fields, use tracker count
+    if (result.filled === 0 && result.total === 0 && actualFilledCount > 0) {
+      return { filled: actualFilledCount, total: actualFilledCount }
+    }
+
+    return result
   } catch (error) {
     console.error("Error during autofill:", error)
+    return { filled: 0, total: 0 }
   }
 }
 
@@ -710,14 +689,11 @@ async function waitForElements(maxWait = 5000): Promise<boolean> {
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === "AUTOFILL_CREDENTIALS") {
-    // Use data passed from background script (either custom or generated)
     const data = msg.data
     const source = msg.source || "unknown"
 
     if (data) {
-      // Wait for form to be ready if needed
       waitForElements(3000).then(() => {
-        // Small additional delay for any animations/transitions
         setTimeout(() => {
           fillCredentials(data).then((result) => {
             sendResponse({
@@ -732,7 +708,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ success: false, error: "No data" })
     }
 
-    return true // important for async response
+    return true
   }
 
   sendResponse({ success: false, error: "Unknown message type" })

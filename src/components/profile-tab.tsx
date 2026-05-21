@@ -1,15 +1,25 @@
 import {
   ArrowLeft,
   Check,
+  Cloud,
+  CloudOff,
   Edit2,
   Eye,
   EyeOff,
   Globe,
   Play,
+  RefreshCw,
   Trash2,
   X
 } from "lucide-react"
 import { useEffect, useState } from "react"
+
+import { supabase } from "~lib/supabaseClient"
+import {
+  getLastSyncTime,
+  syncWebsiteProfilesFromSupabase,
+  syncWebsiteProfilesToSupabase
+} from "~lib/syncService"
 
 import React = require("react")
 
@@ -34,17 +44,16 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
     Record<string, boolean>
   >({})
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [lastSyncTime, setLastSyncTime] = useState<number | null>(null)
 
-  const sensitiveFields = new Set([
-    "password",
-    "ssn",
-    "driverslicense",
-    "creditcardnumber",
-    "cardverificationcode"
-  ])
+  const sensitiveFields = new Set(["password"])
 
   // Load profiles from storage
   useEffect(() => {
+    // Load last sync time
+    getLastSyncTime().then(setLastSyncTime)
+
     chrome.storage.local.get("websiteProfiles", (res) => {
       const savedProfiles = res.websiteProfiles || []
       setProfiles(
@@ -55,13 +64,99 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
     })
   }, [])
 
-  const handleDelete = (profileId: string) => {
+  const handleSyncToCloud = async () => {
+    setSyncing(true)
+    const result = await syncWebsiteProfilesToSupabase()
+    setSyncing(false)
+
+    if (result.success) {
+      setLastSyncTime(result.syncedAt || Date.now())
+      setStatus(
+        <span className="flex items-center gap-2">
+          <Cloud className="w-4 h-4 text-green-600" />
+          <span className="text-gray-700">Synced to cloud</span>
+        </span>
+      )
+    } else {
+      console.error("Sync to cloud failed:", result.error)
+      setStatus(
+        <span className="flex items-center gap-2">
+          <CloudOff className="w-4 h-4 text-red-600" />
+          <span className="text-gray-700 text-left">
+            Sync failed: {result.error || "Unknown error"}
+          </span>
+        </span>
+      )
+    }
+    setTimeout(() => setStatus(""), 5000)
+  }
+
+  const handleSyncFromCloud = async () => {
+    setSyncing(true)
+    const result = await syncWebsiteProfilesFromSupabase()
+    setSyncing(false)
+
+    if (result.success) {
+      setLastSyncTime(result.syncedAt || Date.now())
+      // Reload profiles from storage
+      chrome.storage.local.get("websiteProfiles", (res) => {
+        const savedProfiles = res.websiteProfiles || []
+        setProfiles(
+          savedProfiles.sort(
+            (a: ProfileEntry, b: ProfileEntry) => b.timestamp - a.timestamp
+          )
+        )
+      })
+      setStatus(
+        <span className="flex items-center gap-2">
+          <Cloud className="w-4 h-4 text-green-600" />
+          <span className="text-gray-700">Synced from cloud</span>
+        </span>
+      )
+    } else {
+      console.error("Sync from cloud failed:", result.error)
+      setStatus(
+        <span className="flex items-center gap-2">
+          <CloudOff className="w-4 h-4 text-red-600" />
+          <span className="text-gray-700 text-left">
+            Sync failed: {result.error || "Unknown error"}
+          </span>
+        </span>
+      )
+    }
+    setTimeout(() => setStatus(""), 5000)
+  }
+
+  const handleDelete = async (profileId: string) => {
     const updated = profiles.filter((p) => p.id !== profileId)
-    chrome.storage.local.set({ websiteProfiles: updated }, () => {
+    chrome.storage.local.set({ websiteProfiles: updated }, async () => {
       setProfiles(updated)
       if (selectedProfile?.id === profileId) {
         setSelectedProfile(null)
       }
+
+      // Also delete from Supabase if authenticated
+      try {
+        const {
+          data: { user }
+        } = await supabase.auth.getUser()
+        if (user) {
+          const { error } = await supabase
+            .from("website_profiles")
+            .delete()
+            .eq("id", profileId)
+            .eq("user_id", user.id)
+
+          if (error) {
+            console.error("Failed to delete from cloud:", error)
+          } else {
+            console.log("✅ Profile deleted from cloud")
+          }
+        }
+      } catch (error) {
+        console.error("Error deleting from cloud:", error)
+      }
+
       setStatus(
         <span className="flex items-center gap-2">
           <Trash2 className="w-4 h-4 text-green-600" />
@@ -93,11 +188,33 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
     })
   }
 
-  const handleClearAll = () => {
-    chrome.storage.local.set({ websiteProfiles: [] }, () => {
+  const handleClearAll = async () => {
+    chrome.storage.local.set({ websiteProfiles: [] }, async () => {
       setProfiles([])
       setSelectedProfile(null)
       setShowClearConfirm(false)
+
+      // Also delete all from Supabase if authenticated
+      try {
+        const {
+          data: { user }
+        } = await supabase.auth.getUser()
+        if (user) {
+          const { error } = await supabase
+            .from("website_profiles")
+            .delete()
+            .eq("user_id", user.id)
+
+          if (error) {
+            console.error("Failed to delete all from cloud:", error)
+          } else {
+            console.log("✅ All profiles deleted from cloud")
+          }
+        }
+      } catch (error) {
+        console.error("Error deleting all from cloud:", error)
+      }
+
       setStatus(
         <span className="flex items-center gap-2">
           <Check className="w-4 h-4 text-green-600" />
@@ -109,9 +226,6 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
   }
 
   const handleUseProfile = (profile: ProfileEntry) => {
-    console.log("🔄 Using profile:", profile)
-    console.log("📦 Profile data:", profile.data)
-
     // Send message to background to trigger autofill with this profile's data
     chrome.runtime.sendMessage(
       {
@@ -119,7 +233,6 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
         useProfileData: profile.data
       },
       (response) => {
-        console.log("📨 Response from background:", response)
         if (response?.success) {
           setStatus(
             <span className="flex items-center gap-2">
@@ -204,9 +317,7 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
 
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <button
-                onClick={goBack}
-                className="p-1 rounded text-gray-600">
+              <button onClick={goBack} className="p-1 rounded text-gray-600">
                 <ArrowLeft size={16} />
               </button>
               <h1 className="text-sm font-semibold text-gray-800">
@@ -221,6 +332,12 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
               </button>
             )}
           </div>
+
+          {lastSyncTime && (
+            <p className="text-xs text-gray-500 text-center">
+              Last synced: {new Date(lastSyncTime).toLocaleString()}
+            </p>
+          )}
 
           {profiles.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
@@ -279,9 +396,7 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
             </div>
           )}
 
-          {status && (
-            <div className="text-center text-sm">{status}</div>
-          )}
+          {status && <div className="text-center text-sm">{status}</div>}
         </div>
       </div>
     )
@@ -383,9 +498,7 @@ export default function ProfileTab({ goBack }: { goBack: () => void }) {
           </div>
         )}
 
-        {status && (
-          <div className="text-center text-sm">{status}</div>
-        )}
+        {status && <div className="text-center text-sm">{status}</div>}
       </div>
     </div>
   )

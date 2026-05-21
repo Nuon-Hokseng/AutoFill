@@ -12,34 +12,17 @@ export type FieldName =
   | "country"
   | "phone"
   | "dob"
-  | "title"
   | "middlename"
-  | "middleinitial"
   | "fullname"
   | "company"
   | "position"
   | "address1"
   | "address2"
   | "homephone"
-  | "workphone"
-  | "fax"
   | "cellphone"
   | "website"
-  | "userid"
-  | "creditcardtype"
-  | "creditcardnumber"
-  | "cardverificationcode"
-  | "cardexpiration"
-  | "cardusername"
-  | "cardissuingbank"
-  | "cardcustomerservicephone"
-  | "ssn"
-  | "driverslicense"
   | "age"
   | "birthplace"
-  | "income"
-  | "custommessage"
-  | "comments"
 
 export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
   gender: [
@@ -390,19 +373,6 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
     "birth info",
     "birth-information"
   ],
-  title: [
-    "title",
-    "salutation",
-    "mr",
-    "mrs",
-    "ms",
-    "dr",
-    "hon",
-    "prefix",
-    "name title",
-    "titlefield",
-    "title select"
-  ],
   middlename: [
     "middle name",
     "middlename",
@@ -413,7 +383,6 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
     "mi",
     "middle"
   ],
-  middleinitial: ["middle initial", "m.i.", "mi", "middleinitial"],
   fullname: [
     "full name",
     "fullname",
@@ -446,74 +415,8 @@ export const FIELD_KEYWORDS: Record<FieldName, string[]> = {
   address1: ["address1", "address line 1", "street address", "address_1"],
   address2: ["address2", "address line 2", "apt", "suite", "unit"],
   homephone: ["home phone", "homephone", "home tel", "telephone home"],
-  workphone: ["work phone", "work telephone", "office phone", "worktel"],
-  fax: ["fax", "fax number", "facsimile"],
   cellphone: ["cell", "cell phone", "mobile", "mobile phone", "cellphone"],
   website: ["website", "web site", "url", "site", "website url", "homepage"],
-  userid: [
-    "user id",
-    "userid",
-    "user-id",
-    "useridentifier",
-    "customer id",
-    "member id"
-  ],
-  creditcardtype: [
-    "card type",
-    "credit card type",
-    "cardtype",
-    "select card type",
-    "cc type",
-    "card brand"
-  ],
-  creditcardnumber: [
-    "card number",
-    "credit card number",
-    "cc number",
-    "cardno",
-    "card_number",
-    "creditcard",
-    "cardnumber"
-  ],
-  cardverificationcode: [
-    "cvv",
-    "cvc",
-    "card verification",
-    "security code",
-    "card code",
-    "cardverificationcode",
-    "card security code"
-  ],
-  cardexpiration: [
-    "expiry",
-    "expiration",
-    "exp date",
-    "exp",
-    "expiration date",
-    "card expiration",
-    "exp_month",
-    "exp_year"
-  ],
-  cardusername: ["cardholder", "card user", "name on card", "card name"],
-  cardissuingbank: ["issuing bank", "card issuing bank", "bank name"],
-  cardcustomerservicephone: [
-    "customer service",
-    "card customer service",
-    "bank phone",
-    "customer support phone"
-  ],
-  ssn: ["ssn", "social security", "social security number", "ssn field"],
-  driverslicense: [
-    "driver",
-    "driver license",
-    "drivers license",
-    "licence",
-    "license number",
-    "driver_license"
-  ],
   age: ["age", "your age", "years old", "age field"],
-  birthplace: ["birth place", "birthplace", "place of birth", "born in"],
-  income: ["income", "annual income", "salary", "gross income", "net income"],
-  custommessage: ["custom message", "message", "note", "personal message"],
-  comments: ["comments", "comment", "remarks", "notes", "additional info"]
+  birthplace: ["birth place", "birthplace", "place of birth", "born in"]
 }

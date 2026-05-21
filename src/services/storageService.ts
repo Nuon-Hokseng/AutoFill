@@ -3,10 +3,8 @@ import { getCachedOrGenerateData } from "./geminiService"
 
 export interface AutofillData {
   // Basic Info
-  title?: string
   firstname?: string
   middlename?: string
-  middleinitial?: string
   lastname?: string
   fullname?: string
 
@@ -20,8 +18,6 @@ export interface AutofillData {
   dob?: string
   age?: string
   birthplace?: string
-  ssn?: string
-  driverslicense?: string
 
   // Company/Work
   company?: string
@@ -38,27 +34,10 @@ export interface AutofillData {
 
   // Phone Numbers
   homephone?: string
-  workphone?: string
-  fax?: string
   cellphone?: string
 
   // Web
   website?: string
-  userid?: string
-
-  // Payment Info
-  creditcardtype?: string
-  creditcardnumber?: string
-  cardverificationcode?: string
-  cardexpiration?: string
-  cardusername?: string
-  cardissuingbank?: string
-  cardcustomerservicephone?: string
-
-  // Additional
-  income?: string
-  custommessage?: string
-  comments?: string
 }
 
 /**
@@ -93,45 +72,45 @@ export async function setAIMode(
 }
 
 /**
- * Get autofill data - checks custom data first, then AI data if AI mode is enabled
+ * Get autofill data
+ * - When AI mode is ON: fill ONLY with AI-generated data (no custom fallback)
+ * - When AI mode is OFF: fill with custom data if available
  */
 export async function getAutofillData(): Promise<{
   data: AutofillData | null
   source: "custom" | "generated" | "none"
 }> {
   return new Promise((resolve) => {
-    // First, check if user has saved custom data
     chrome.storage.local.get(["autofillData", "aiModeEnabled"], async (res) => {
       const customData = res.autofillData as AutofillData | undefined
       const aiModeEnabled = res.aiModeEnabled !== false // Default to true
 
-      // Check if custom data exists and has at least one field filled
+      if (aiModeEnabled) {
+        // AI-only mode: never use custom data
+        console.log("🤖 AI mode ON — using AI-generated data only")
+        const generatedData = await getCachedOrGenerateData()
+        if (generatedData) {
+          console.log("✅ Using Gemini-generated data")
+          resolve({ data: generatedData, source: "generated" })
+        } else {
+          console.warn(
+            "⚠️ Failed to generate AI data; no data will be filled in AI mode"
+          )
+          resolve({ data: null, source: "none" })
+        }
+        return
+      }
+
+      // AI mode OFF: fall back to custom data
       const hasCustomData =
         customData &&
         Object.values(customData).some((value) => value && value.trim() !== "")
 
       if (hasCustomData) {
-        console.log("📝 Using custom user data (overrides AI)")
+        console.log("📝 AI mode OFF — using custom user data")
         resolve({ data: customData, source: "custom" })
-        return
-      }
-
-      // No custom data - check if AI mode is enabled
-      if (!aiModeEnabled) {
-        console.log("🚫 AI mode disabled and no custom data available")
-        resolve({ data: null, source: "none" })
-        return
-      }
-
-      // AI mode enabled, generate data
-      console.log("🤖 AI mode enabled, generating data...")
-      const generatedData = await getCachedOrGenerateData()
-
-      if (generatedData) {
-        console.log("✅ Using Gemini-generated data")
-        resolve({ data: generatedData, source: "generated" })
       } else {
-        console.warn("⚠️ Failed to generate AI data, no data available")
+        console.log("🚫 AI mode OFF and no custom data available")
         resolve({ data: null, source: "none" })
       }
     })

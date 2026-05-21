@@ -1,9 +1,11 @@
-import React from "react"
+import CustomTab from "~components/custom-tab"
 
 export default function CustomFields() {
   return (
-    <div>
-      <h1>Custom Fields Page</h1>
+    <div className="mt-40 flex items-center justify-center gap-6">
+      <div>
+        <CustomTab goBack={() => {}} mode="web" />
+      </div>
     </div>
   )
 }

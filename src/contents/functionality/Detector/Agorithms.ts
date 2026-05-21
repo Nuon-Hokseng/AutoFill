@@ -69,7 +69,6 @@ function getAutocompleteBonus(
   if (
     (field === "phone" ||
       field === "cellphone" ||
-      field === "workphone" ||
       field === "homephone") &&
     (ac.includes("tel") ||
       ac.includes("tel-national") ||

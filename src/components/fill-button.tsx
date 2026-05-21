@@ -1,8 +1,6 @@
 import { AlertCircle, Check, RefreshCw, Wand2, X } from "lucide-react"
 import { useState } from "react"
 
-import React = require("react")
-
 type FillResult = { filled?: number; total?: number } | null
 
 export const FillButton = ({
@@ -18,6 +16,7 @@ export const FillButton = ({
   const [dataSource, setDataSource] = useState<"custom" | "generated" | null>(
     null
   )
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const handleClick = async () => {
     try {
@@ -55,17 +54,20 @@ export const FillButton = ({
       } else {
         // Determine error type based on response
         const isAiDisabled = response?.aiEnabled === false
+        const isRateLimited = response?.rateLimited === true
         setStatus(isAiDisabled ? "nodata" : "error")
+        setErrorMessage(response?.error || null)
         setDataSource(null)
         if (onStatusChange) onStatusChange("error")
         if (onResult) onResult({ filled: 0, total: 0 })
 
-        // Reset status after 3 seconds
+        // Reset status after 5 seconds (longer for error messages)
         setTimeout(() => {
           setStatus("idle")
+          setErrorMessage(null)
           setDataSource(null)
           if (onStatusChange) onStatusChange("idle")
-        }, 3000)
+        }, 5000)
       }
     } catch (error) {
       console.error("Autofill error:", error)
@@ -118,8 +120,7 @@ export const FillButton = ({
             className="text-red-500 flex items-center gap-2">
             <X className="w-5 h-5 animate-pulse" />
             <span className="text-sm text-red-600">
-              Failed to generate AI data. Try refresh data or toggle AI mode off
-              and on below.
+              {errorMessage || "No form detected, Please refresh"}
             </span>
           </span>
         )}
@@ -130,16 +131,6 @@ export const FillButton = ({
             <AlertCircle className="w-5 h-5 animate-pulse" />
             <span className="text-sm text-orange-600">
               No custom data. Add data or enable AI mode.
-            </span>
-          </span>
-        )}
-        {status === "noform" && (
-          <span
-            aria-label="noform"
-            className="text-yellow-600 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
-            <span className="text-sm text-yellow-700">
-              No form detected
             </span>
           </span>
         )}

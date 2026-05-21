@@ -30,26 +30,6 @@ function findByKeywords(
 }
 
 // Generic detect/fill generator style functions below
-export function detectTitleField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.title)
-}
-
-export async function fillTitle(
-  el: HTMLInputElement,
-  value: string
-): Promise<boolean> {
-  if (!el || !value) return false
-  try {
-    await fillFieldWithAnimation(el, value)
-    return true
-  } catch (e) {
-    console.error("Error filling title:", e)
-    return false
-  }
-}
-
 export function detectMiddleNameField(
   inputs: HTMLInputElement[]
 ): HTMLInputElement | null {
@@ -68,12 +48,6 @@ export async function fillMiddleName(
     console.error("Error filling middle name:", e)
     return false
   }
-}
-
-export function detectMiddleInitialField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.middleinitial)
 }
 
 export function detectFullNameField(
@@ -168,18 +142,6 @@ export function detectHomePhoneField(
   return findByKeywords(inputs, FIELD_KEYWORDS.homephone)
 }
 
-export function detectWorkPhoneField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.workphone)
-}
-
-export function detectFaxField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.fax)
-}
-
 export function detectCellPhoneField(
   inputs: HTMLInputElement[]
 ): HTMLInputElement | null {
@@ -225,88 +187,6 @@ export async function fillWebsite(
   }
 }
 
-export function detectUserIdField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.userid)
-}
-
-export function detectCreditCardTypeField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.creditcardtype)
-}
-
-export function detectCreditCardNumberField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  // also try inputmode=numeric or pattern
-  for (const el of inputs) {
-    const t = (el.getAttribute("type") || "").toLowerCase()
-    const im = (el.getAttribute("inputmode") || "").toLowerCase()
-    if (
-      matchesAny(el.getAttribute("name") || "", FIELD_KEYWORDS.creditcardnumber)
-    )
-      return el
-    if (t === "tel" || t === "number" || im === "numeric") {
-      const tagStr = [
-        el.getAttribute("name"),
-        el.getAttribute("id"),
-        el.getAttribute("placeholder"),
-        el.getAttribute("aria-label"),
-        getAssociatedLabelText(el)
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-      if (matchesAny(tagStr, FIELD_KEYWORDS.creditcardnumber)) return el
-    }
-  }
-  return findByKeywords(inputs, FIELD_KEYWORDS.creditcardnumber)
-}
-
-export function detectCardVerificationCodeField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.cardverificationcode)
-}
-
-export function detectCardExpirationField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.cardexpiration)
-}
-
-export function detectCardUserNameField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.cardusername)
-}
-
-export function detectCardIssuingBankField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.cardissuingbank)
-}
-
-export function detectCardCustomerServicePhoneField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.cardcustomerservicephone)
-}
-
-export function detectSSNField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.ssn)
-}
-
-export function detectDriverLicenseField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.driverslicense)
-}
-
 export function detectAgeField(
   inputs: HTMLInputElement[]
 ): HTMLInputElement | null {
@@ -317,24 +197,6 @@ export function detectBirthPlaceField(
   inputs: HTMLInputElement[]
 ): HTMLInputElement | null {
   return findByKeywords(inputs, FIELD_KEYWORDS.birthplace)
-}
-
-export function detectIncomeField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.income)
-}
-
-export function detectCustomMessageField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.custommessage)
-}
-
-export function detectCommentsField(
-  inputs: HTMLInputElement[]
-): HTMLInputElement | null {
-  return findByKeywords(inputs, FIELD_KEYWORDS.comments)
 }
 
 // City, State, Zipcode, Country detectors (these were in Agorithms but needed direct accessors)
